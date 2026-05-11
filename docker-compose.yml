@@ -22,6 +22,37 @@ services:
     networks:
       - portside
 
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - /etc/portside/time.env
+    environment:
+      NODE_ENV: production
+      DB_PATH: /data/portside.db
+      BACKUP_WORK_DIR: /tmp
+    volumes:
+      - /srv/portside/data:/data:ro
+    restart: unless-stopped
+    # Daily at 02:00 Africa/Djibouti = 23:00 UTC the day before.
+    # Sleep-until-the-clock approach: simpler than a real cron container.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          now=$$(date -u +%H%M)
+          # Trigger at 23:00 UTC
+          if [ "$$now" = "2300" ]; then
+            node node_modules/.bin/tsx scripts/backup.ts || echo "[backup] errored"
+            sleep 3600
+          else
+            sleep 50
+          fi
+        done
+    networks:
+      - portside
+
   caddy:
     image: caddy:2-alpine
     depends_on:

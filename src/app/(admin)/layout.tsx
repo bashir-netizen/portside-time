@@ -6,11 +6,12 @@ import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/time";
 
 const NAV = [
-  { href: "/admin", label: "Dashboard", emoji: "🏠" },
-  { href: "/admin/employees", label: "Employees", emoji: "👥" },
-  { href: "/admin/devices", label: "Devices", emoji: "💻" },
-  { href: "/admin/ip-allowlist", label: "IPs", emoji: "🌐" },
-  { href: "/admin/audit", label: "Audit", emoji: "📜" },
+  { href: "/admin", label: "Home", emoji: "🏠" },
+  { href: "/admin/employees", label: "Staff", emoji: "👥" },
+  { href: "/admin/punches", label: "Punches", emoji: "⏱️" },
+  { href: "/admin/leave", label: "Leave", emoji: "📅" },
+  { href: "/admin/reports", label: "Reports", emoji: "📊" },
+  { href: "/admin/more", label: "More", emoji: "···" },
 ];
 
 export default async function AdminLayout({

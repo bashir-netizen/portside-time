@@ -31,8 +31,10 @@ model Employee {
   createdAt                DateTime  @default(now()) @map("created_at")
   updatedAt                DateTime  @updatedAt @map("updated_at")
 
-  sessions Session[]
-  punches  Punch[]
+  sessions       Session[]
+  punches        Punch[]
+  leaveRequests  LeaveRequest[]
+  monthlyReports MonthlyReport[]
 
   @@map("employees")
 }
@@ -51,9 +53,118 @@ model Punch {
   isCorrected Boolean  @default(false) @map("is_corrected")
   createdAt   DateTime @default(now()) @map("created_at")
 
+  corrections PunchCorrection[]
+
   @@index([employeeId, punchedAt])
   @@index([punchedAt])
   @@map("punches")
+}
+
+model PunchCorrection {
+  id                 String    @id @default(cuid())
+  punchId            String?   @map("punch_id")        // null when the correction is "add a missing punch"
+  punch              Punch?    @relation(fields: [punchId], references: [id], onDelete: SetNull)
+  employeeId         String    @map("employee_id")
+  correctionType     String    @map("correction_type") // add | edit | void
+  originalPunchType  String?   @map("original_punch_type")
+  originalPunchedAt  DateTime? @map("original_punched_at")
+  newPunchType       String?   @map("new_punch_type")
+  newPunchedAt       DateTime? @map("new_punched_at")
+  adminId            String    @map("admin_id")
+  reason             String
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  @@index([employeeId])
+  @@index([createdAt])
+  @@map("punch_corrections")
+}
+
+// ---------- Leave & Holidays ----------
+
+model LeaveRequest {
+  id              String    @id @default(cuid())
+  employeeId      String    @map("employee_id")
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  leaveType       String    @map("leave_type") // annual | sick | maternity | paternity | bereavement | marriage | unpaid
+  startDate       DateTime  @map("start_date")
+  endDate         DateTime  @map("end_date")
+  days            Float     // fractional days allowed (half-day annual leave etc.)
+  status          String    @default("pending") // pending | approved | rejected | cancelled | pending_certificate | certified_sick | unauthorized
+  certificatePath String?   @map("certificate_path") // path under /data/uploads
+  approverId      String?   @map("approver_id")
+  decidedAt       DateTime? @map("decided_at")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate])
+  @@map("leave_requests")
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime @unique // stored as start-of-day UTC for the Djibouti calendar day
+  name      String
+  isPaid    Boolean  @default(true) @map("is_paid")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("holidays")
+}
+
+// ---------- Monthly reports ----------
+
+model MonthlyReport {
+  id                   String    @id @default(cuid())
+  employeeId           String    @map("employee_id")
+  employee             Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  periodStart          DateTime  @map("period_start") // first day of month, Djibouti TZ start-of-day UTC
+  periodEnd            DateTime  @map("period_end")   // first day of *next* month (exclusive upper)
+  workedHours          Float     @map("worked_hours")
+  scheduledHours       Float     @map("scheduled_hours")
+  lateCount            Int       @map("late_count")
+  lateMinutes          Int       @map("late_minutes")
+  lateDeductionDjf     Int       @map("late_deduction_djf")
+  overtimeHours        Float     @map("overtime_hours")
+  overtimeAmountDjf    Int       @map("overtime_amount_djf")
+  sickDaysCertified    Float     @map("sick_days_certified")
+  sickDaysUncertified  Float     @map("sick_days_uncertified")
+  vacationDays         Float     @map("vacation_days")
+  holidayDays          Float     @map("holiday_days")
+  unauthAbsenceDays    Float     @map("unauth_absence_days")
+  unauthAbsenceDjf     Int       @map("unauth_absence_djf")
+  adjustmentsDjf       Int       @default(0) @map("adjustments_djf")
+  netDeductionDjf      Int       @map("net_deduction_djf")
+  netAdditionDjf       Int       @map("net_addition_djf")
+  locked               Boolean   @default(false)
+  lockedAt             DateTime? @map("locked_at")
+  exportedAt           DateTime? @map("exported_at")
+  exportedBy           String?   @map("exported_by")
+  exportPath           String?   @map("export_path")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@unique([employeeId, periodStart])
+  @@index([periodStart])
+  @@index([locked])
+  @@map("monthly_reports")
+}
+
+model Adjustment {
+  id                  String   @id @default(cuid())
+  employeeId          String   @map("employee_id")
+  appliesToPeriodStart DateTime @map("applies_to_period_start") // the locked period this adjustment is about
+  amountDjf           Int      @map("amount_djf") // positive = addition, negative = deduction
+  reason              String
+  adminId             String   @map("admin_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  appliedInPeriodStart DateTime? @map("applied_in_period_start") // set when consumed by a MonthlyReport
+
+  @@index([employeeId])
+  @@index([appliesToPeriodStart])
+  @@index([appliedInPeriodStart])
+  @@map("adjustments")
 }
 
 model Schedule {

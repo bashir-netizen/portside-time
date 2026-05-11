@@ -1,41 +1,81 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { formatDateTime, formatTime } from "@/lib/time";
+import { formatDate, formatDateTime, formatTime } from "@/lib/time";
 import { djiboutiDayWindow } from "@/lib/punch/window";
 import { dayStatus } from "@/lib/punch/sequence";
 import type { PunchType } from "@/lib/punch/types";
 
 export default async function AdminDashboard() {
-  const { start, end } = djiboutiDayWindow();
+  const { start: dayStart, end: dayEnd } = djiboutiDayWindow();
+  // Week window: 6 days back to today (Djibouti).
+  const weekStart = new Date(dayStart.getTime() - 5 * 24 * 60 * 60 * 1000);
 
-  const [employees, todaysPunches, devices, pendingIps, recentAudit] =
-    await Promise.all([
-      db.employee.findMany({
-        where: { status: "active" },
-        orderBy: { fullName: "asc" },
-      }),
-      db.punch.findMany({
-        where: { punchedAt: { gte: start, lt: end } },
-        orderBy: { punchedAt: "asc" },
-      }),
-      db.device.count({ where: { status: "approved" } }),
-      db.pendingIp.count({ where: { status: "open" } }),
-      db.auditLog.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 8,
-      }),
-    ]);
+  const [
+    employees,
+    todaysPunches,
+    weekPunches,
+    pendingLeave,
+    pendingIps,
+    blockedAttempts,
+  ] = await Promise.all([
+    db.employee.findMany({
+      where: { status: "active" },
+      orderBy: { fullName: "asc" },
+    }),
+    db.punch.findMany({
+      where: { punchedAt: { gte: dayStart, lt: dayEnd } },
+      orderBy: { punchedAt: "asc" },
+      include: { corrections: { orderBy: { createdAt: "desc" }, take: 1 } },
+    }),
+    db.punch.findMany({
+      where: { punchedAt: { gte: weekStart, lt: dayEnd } },
+      select: { employeeId: true, punchedAt: true, punchType: true },
+    }),
+    db.leaveRequest.count({
+      where: { status: { in: ["pending", "pending_certificate"] } },
+    }),
+    db.pendingIp.count({ where: { status: "open" } }),
+    db.auditLog.count({
+      where: {
+        action: { in: ["punch_blocked", "employee_login_blocked"] },
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    }),
+  ]);
 
-  // Bucket today's punches per employee
-  const byEmployee = new Map<
-    string,
-    { punches: { type: PunchType; at: Date }[] }
-  >();
-  for (const e of employees) byEmployee.set(e.id, { punches: [] });
+  // Today's status per employee (effective times)
+  const todayByEmp = new Map<string, { type: PunchType; at: Date }[]>();
+  for (const e of employees) todayByEmp.set(e.id, []);
   for (const p of todaysPunches) {
-    const bucket = byEmployee.get(p.employeeId);
-    if (!bucket) continue;
-    bucket.punches.push({ type: p.punchType as PunchType, at: p.punchedAt });
+    const c = p.corrections[0];
+    if (c?.correctionType === "void") continue;
+    const at =
+      c?.correctionType === "edit" && c.newPunchedAt
+        ? c.newPunchedAt
+        : p.punchedAt;
+    todayByEmp.get(p.employeeId)?.push({
+      type: p.punchType as PunchType,
+      at,
+    });
+  }
+
+  // Heatmap rows: each employee × 6 days, showing worked-minute heat
+  const dayMs = 24 * 60 * 60 * 1000;
+  const days: Date[] = [];
+  for (let i = 0; i < 6; i++) {
+    days.push(new Date(weekStart.getTime() + i * dayMs));
+  }
+  const weekByEmpDay = new Map<string, Map<string, number>>();
+  for (const e of employees)
+    weekByEmpDay.set(e.id, new Map(days.map((d) => [keyOf(d), 0])));
+  // crude minutes proxy: count punches as 240 if shift_in→lunch_out paired,
+  // but we already have getEffectivePunches in step 9; for the heatmap we just
+  // show punch count (saturation = activity)
+  for (const p of weekPunches) {
+    const m = weekByEmpDay.get(p.employeeId);
+    if (!m) continue;
+    const key = keyOf(p.punchedAt);
+    m.set(key, (m.get(key) ?? 0) + 1);
   }
 
   return (
@@ -47,11 +87,16 @@ export default async function AdminDashboard() {
         className="grid grid-cols-2 gap-3 md:grid-cols-4"
       >
         <Card label="Active employees" value={employees.length} />
-        <Card label="Approved devices" value={devices} />
+        <Card
+          label="Pending leave"
+          value={pendingLeave}
+          accent={pendingLeave > 0}
+        />
         <Card label="Pending IPs" value={pendingIps} accent={pendingIps > 0} />
         <Card
-          label="Punches today"
-          value={todaysPunches.length}
+          label="Blocked attempts 24h"
+          value={blockedAttempts}
+          accent={blockedAttempts > 0}
         />
       </section>
 
@@ -66,10 +111,10 @@ export default async function AdminDashboard() {
             </li>
           )}
           {employees.map((e) => {
-            const bucket = byEmployee.get(e.id)!;
-            const types = bucket.punches.map((p) => p.type);
+            const punches = todayByEmp.get(e.id) ?? [];
+            const types = punches.map((p) => p.type);
             const status = dayStatus(types);
-            const last = bucket.punches.at(-1) ?? null;
+            const last = punches.at(-1) ?? null;
             return (
               <li
                 key={e.id}
@@ -96,37 +141,66 @@ export default async function AdminDashboard() {
         </ul>
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
-          Recent activity
+          This week
         </h2>
-        {recentAudit.length === 0 ? (
-          <p className="text-sm text-zinc-500">No activity yet.</p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-zinc-200 rounded-md border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
-            {recentAudit.map((row) => (
-              <li
-                key={row.id}
-                className="flex flex-col gap-0.5 px-3 py-2 text-sm md:flex-row md:items-center md:justify-between"
-              >
-                <span className="font-medium">{row.action}</span>
-                <span className="text-xs text-zinc-500">
-                  {row.entityType ? `${row.entityType} · ` : ""}
-                  {formatDateTime(row.createdAt)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link
-          href="/admin/audit"
-          className="self-start text-sm font-medium text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400"
-        >
-          View full audit log →
-        </Link>
+        <div className="overflow-x-auto rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+          <table className="min-w-full text-sm">
+            <thead className="text-xs uppercase text-zinc-500">
+              <tr>
+                <th className="px-3 py-2 text-left">Employee</th>
+                {days.map((d) => (
+                  <th key={keyOf(d)} className="px-2 py-2 text-center">
+                    {formatDate(d).slice(0, 6)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map((e) => (
+                <tr key={e.id} className="border-t border-zinc-200 dark:border-zinc-800">
+                  <td className="px-3 py-2 font-medium">{e.fullName}</td>
+                  {days.map((d) => {
+                    const count = weekByEmpDay.get(e.id)?.get(keyOf(d)) ?? 0;
+                    return (
+                      <td key={keyOf(d)} className="px-2 py-2 text-center">
+                        <HeatCell count={count} />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-zinc-500">
+          Saturation = punches recorded that day. Click an employee for details.
+        </p>
       </section>
     </div>
   );
+}
+
+function HeatCell({ count }: { count: number }) {
+  const level = count === 0 ? 0 : Math.min(4, Math.ceil(count / 1));
+  const colors = [
+    "bg-zinc-100 dark:bg-zinc-900",
+    "bg-emerald-100 dark:bg-emerald-950",
+    "bg-emerald-200 dark:bg-emerald-900",
+    "bg-emerald-300 dark:bg-emerald-800",
+    "bg-emerald-500 dark:bg-emerald-700",
+  ];
+  return (
+    <span
+      title={`${count} punch${count === 1 ? "" : "es"}`}
+      className={`inline-block size-6 rounded ${colors[level]}`}
+    />
+  );
+}
+
+function keyOf(d: Date): string {
+  return d.toISOString().slice(0, 10);
 }
 
 function Card({
