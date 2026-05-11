@@ -32,8 +32,28 @@ model Employee {
   updatedAt                DateTime  @updatedAt @map("updated_at")
 
   sessions Session[]
+  punches  Punch[]
 
   @@map("employees")
+}
+
+// ---------- Punches ----------
+
+model Punch {
+  id          String   @id @default(cuid())
+  employeeId  String   @map("employee_id")
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  punchType   String   @map("punch_type") // shift_in | lunch_out | lunch_in | shift_out
+  punchedAt   DateTime @map("punched_at")
+  sourceIp    String?  @map("source_ip")
+  deviceId    String?  @map("device_id")
+  userAgent   String?  @map("user_agent")
+  isCorrected Boolean  @default(false) @map("is_corrected")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([employeeId, punchedAt])
+  @@index([punchedAt])
+  @@map("punches")
 }
 
 model Schedule {
