@@ -1,0 +1,81 @@
+name: portside-time
+
+# Path B deployment: HP laptop at the office.
+#
+# Components:
+#   - app          : Next.js + SQLite, listening on the internal network only
+#   - cloudflared  : Cloudflare Tunnel client; exposes time.portside.dj to the world
+#                    over an outbound-only connection. No inbound ports opened on
+#                    the laptop's network.
+#   - backup       : nightly encrypted SQLite snapshot to ./data/backups/
+#                    (local disk; copy to a USB drive weekly).
+#
+# Use this file with:
+#   docker compose -f docker-compose.path-b.yml up -d --build
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./time.env
+    environment:
+      DATABASE_URL: "file:/data/portside.db"
+      NODE_ENV: production
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - portside
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN}
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - portside
+
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./time.env
+    environment:
+      NODE_ENV: production
+      DB_PATH: /data/portside.db
+      BACKUP_DIR: /data/backups
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    # 02:00 Africa/Djibouti = 23:00 UTC
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          now=$$(date -u +%H%M)
+          if [ "$$now" = "2300" ]; then
+            node node_modules/.bin/tsx scripts/backup-local.ts || echo "[backup] errored"
+            sleep 3600
+          else
+            sleep 50
+          fi
+        done
+    networks:
+      - portside
+
+networks:
+  portside:
+    driver: bridge

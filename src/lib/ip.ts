@@ -17,6 +17,12 @@ export function resolveClientIp(headers: {
   get(name: string): string | null;
 }): string | null {
   if (env.TRUST_FORWARDED_HEADERS) {
+    // Cloudflare Tunnel and Cloudflare Proxy both forward the original client
+    // IP in this header. It's the highest-trust signal when present because
+    // Cloudflare strips any client-set value before adding its own.
+    const cfIp = headers.get("cf-connecting-ip");
+    if (cfIp) return cfIp.trim();
+
     const xff = headers.get("x-forwarded-for");
     if (xff) {
       for (const part of xff.split(",")) {

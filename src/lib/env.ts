@@ -16,8 +16,13 @@ const EnvSchema = z.object({
   ADMIN_PASSWORD_BOOTSTRAP: z.string().min(8),
   ADMIN_ALERT_EMAIL: z.string().email(),
 
-  RESEND_API_KEY: z.string().default(""),
-  RESEND_FROM: z.string().min(1),
+  // SMTP for the new-IP alert email. Empty values mean "log instead of send"
+  // (useful in local dev).
+  SMTP_HOST: z.string().default(""),
+  SMTP_PORT: z.coerce.number().int().default(465),
+  SMTP_USER: z.string().default(""),
+  SMTP_PASS: z.string().default(""),
+  SMTP_FROM: z.string().min(1).default("Portside Time <noreply@example.com>"),
 
   TZ: z.string().default("Africa/Djibouti"),
   TRUST_FORWARDED_HEADERS: z
