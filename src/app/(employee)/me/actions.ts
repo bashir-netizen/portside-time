@@ -10,6 +10,7 @@ import { readDeviceCookie } from "@/lib/device/cookie";
 import { checkDevice } from "@/lib/device/check";
 import { getTodaysPunches } from "@/lib/punch/repo";
 import { checkSequence } from "@/lib/punch/sequence";
+import { getDayPatternForEmployee } from "@/lib/punch/day-pattern";
 import { isPunchType, type PunchType } from "@/lib/punch/types";
 
 type PunchActionResult =
@@ -132,11 +133,13 @@ export async function punchAction(formData: FormData): Promise<PunchActionResult
     deviceIdForPunch = deviceCheck.device.id;
   }
 
-  // Check 5 — sequence
+  // Check 5 — sequence (now day-pattern aware)
   const todays = await getTodaysPunches(session.employeeId);
+  const dayPattern = await getDayPatternForEmployee(session.employeeId);
   const seq = checkSequence(
     todays.map((p) => p.punchType),
     requested,
+    dayPattern.type,
   );
   if (!seq.ok) {
     await audit({
@@ -153,9 +156,14 @@ export async function punchAction(formData: FormData): Promise<PunchActionResult
     return {
       ok: false,
       reason: "sequence",
-      message: seq.expected
-        ? `Next valid punch is ${seq.expected.replace("_", " ")}.`
-        : "Today's shift is already finished.",
+      message:
+        seq.reason === "day_off"
+          ? "Today is your day off — no punches expected."
+          : seq.reason === "not_in_sequence"
+            ? "That punch type isn't part of today's schedule."
+            : seq.expected
+              ? `Next valid punch is ${seq.expected.replace("_", " ")}.`
+              : "Today's shift is already finished.",
     };
   }
 

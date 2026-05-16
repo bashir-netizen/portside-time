@@ -18,18 +18,30 @@ datasource db {
 // ---------- Domain ----------
 
 model Employee {
-  id                       String    @id @default(cuid())
-  fullName                 String    @map("full_name")
-  position                 String
-  monthlySalary            Int       @map("monthly_salary") // DJF, no decimals
-  hireDate                 DateTime  @map("hire_date")
-  status                   String    @default("active") // active | inactive
-  defaultScheduleId        String    @map("default_schedule_id")
-  defaultSchedule          Schedule  @relation(fields: [defaultScheduleId], references: [id])
-  annualLeaveBalanceDays   Int       @default(0) @map("annual_leave_balance_days")
-  pinHash                  String?   @map("pin_hash") // Argon2id; nullable so admin can create employee then set PIN
-  createdAt                DateTime  @default(now()) @map("created_at")
-  updatedAt                DateTime  @updatedAt @map("updated_at")
+  id                          String    @id @default(cuid())
+  fullName                    String    @map("full_name")
+  position                    String
+  monthlySalary               Int       @map("monthly_salary") // DJF, no decimals
+  hireDate                    DateTime  @map("hire_date")
+  status                      String    @default("active") // active | inactive
+
+  // Legacy flat schedule — kept for back-compat during the template migration.
+  // New code reads defaultScheduleTemplate; this stays so existing rows + the
+  // legacy /admin/schedules editor keep working. Drops in a future PR once
+  // every employee is on a template and we're confident.
+  defaultScheduleId           String    @map("default_schedule_id")
+  defaultSchedule             Schedule  @relation(fields: [defaultScheduleId], references: [id])
+
+  // Day-pattern template — Phase 2. Nullable during migration; backfilled by
+  // scripts/migrate-employees-to-templates.ts. All new reads should prefer
+  // this field; the legacy defaultSchedule is fallback only.
+  defaultScheduleTemplateId   String?           @map("default_schedule_template_id")
+  defaultScheduleTemplate     ScheduleTemplate? @relation(fields: [defaultScheduleTemplateId], references: [id])
+
+  annualLeaveBalanceDays      Int       @default(0) @map("annual_leave_balance_days")
+  pinHash                     String?   @map("pin_hash") // Argon2id; nullable so admin can create employee then set PIN
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
 
   sessions       Session[]
   punches        Punch[]
@@ -203,6 +215,7 @@ model ScheduleTemplate {
   updatedAt           DateTime      @updatedAt @map("updated_at")
 
   dayPatterns DayPattern[]
+  employees   Employee[]
 
   @@map("schedule_templates")
 }

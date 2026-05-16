@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 
 type Schedule = { id: string; label: string };
+type Template = { id: string; name: string; description: string | null };
 
 type Result =
   | { ok: true }
@@ -24,6 +25,7 @@ type Action = (prev: Result | null, fd: FormData) => Promise<Result>;
 export function EmployeeEditForm({
   initial,
   schedules,
+  templates,
   action,
 }: {
   initial: {
@@ -32,8 +34,10 @@ export function EmployeeEditForm({
     monthlySalary: number;
     hireDate: string; // YYYY-MM-DD
     defaultScheduleId: string;
+    defaultScheduleTemplateId: string; // "" = none
   };
   schedules: Schedule[];
+  templates: Template[];
   action: Action;
 }) {
   const [state, formAction, pending] = useActionState<Result | null, FormData>(
@@ -83,7 +87,44 @@ export function EmployeeEditForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="defaultScheduleId">Default schedule</Label>
+        <Label htmlFor="defaultScheduleTemplateId">
+          Schedule template
+        </Label>
+        <Select
+          name="defaultScheduleTemplateId"
+          defaultValue={initial.defaultScheduleTemplateId || "__none__"}
+        >
+          <SelectTrigger
+            id="defaultScheduleTemplateId"
+            className="bg-card"
+          >
+            <SelectValue placeholder="Pick a template" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">No template (legacy)</SelectItem>
+            {templates.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground">
+          Drives the punch sequence: split-day (4 punches), continuous-day
+          (4 punches, lunch on site), half-day (2 punches), or day-off
+          (punching blocked) per spec §5.3.
+        </p>
+        {fieldErrors?.defaultScheduleTemplateId ? (
+          <p className="text-xs text-destructive">
+            {fieldErrors.defaultScheduleTemplateId[0]}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="defaultScheduleId">
+          Legacy schedule (for back-compat)
+        </Label>
         <Select
           name="defaultScheduleId"
           defaultValue={initial.defaultScheduleId}
@@ -99,6 +140,10 @@ export function EmployeeEditForm({
             ))}
           </SelectContent>
         </Select>
+        <p className="text-[10px] text-muted-foreground">
+          Required by the old schema. Will be dropped in a future PR once
+          every employee runs on a template.
+        </p>
         {fieldErrors?.defaultScheduleId ? (
           <p className="text-xs text-destructive">
             {fieldErrors.defaultScheduleId[0]}

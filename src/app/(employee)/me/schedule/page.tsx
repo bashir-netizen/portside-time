@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, Sun, Moon, UtensilsCrossed, Coffee } from "lucide-react";
+import {
+  ChevronRight,
+  Sun,
+  Moon,
+  UtensilsCrossed,
+  Coffee,
+  Briefcase,
+} from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { addDays, startOfWeek } from "date-fns";
 import { readSession } from "@/lib/auth/session";
@@ -13,30 +20,39 @@ export const metadata = { title: "Schedule — Portside Time" };
 
 const TZ = "Africa/Djibouti";
 
+type Actuals = Partial<Record<string, string>>;
+
 export default async function SchedulePage() {
   const session = await readSession();
   if (!session?.employeeId || session.role !== "employee") redirect("/login");
 
   const employee = await db.employee.findUnique({
     where: { id: session.employeeId },
-    include: { defaultSchedule: true },
+    include: {
+      defaultSchedule: true,
+      defaultScheduleTemplate: {
+        include: {
+          dayPatterns: { orderBy: { dayOfWeek: "asc" } },
+        },
+      },
+    },
   });
   if (!employee) redirect("/login");
 
-  // Week starts Sunday for Djibouti (week_start_day=0 per spec §4 CompanyConfig).
   const now = new Date();
   const todayYmd = formatInTimeZone(now, TZ, "yyyy-MM-dd");
   const weekStart = startOfWeek(now, { weekStartsOn: 0 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const fridayIdx = 5;
 
-  const s = employee.defaultSchedule;
-  const expectedStart = s.shiftStart;
-  const expectedLunchOut = s.lunchStart;
-  const expectedLunchIn = s.lunchEnd;
-  const expectedEnd = s.shiftEnd;
+  // Build a Sun=0..Sat=6 lookup of day patterns for the employee's template.
+  const patternByDow = new Map<number, NonNullable<typeof employee.defaultScheduleTemplate>["dayPatterns"][number]>();
+  if (employee.defaultScheduleTemplate) {
+    for (const p of employee.defaultScheduleTemplate.dayPatterns) {
+      patternByDow.set(p.dayOfWeek, p);
+    }
+  }
 
-  // Pull this-week punches so we can overlay actuals later in the design.
+  // Pull this-week punches so we can overlay actuals.
   const weekStartUtc = new Date(weekStart);
   const punchesThisWeek = await db.punch.findMany({
     where: {
@@ -46,9 +62,6 @@ export default async function SchedulePage() {
     select: { punchType: true, punchedAt: true },
     orderBy: { punchedAt: "asc" },
   });
-
-  // Index actual punches by day (yyyy-MM-dd) -> { shift_in, lunch_out, ... }
-  type Actuals = Partial<Record<string, string>>;
   const actualByDay = new Map<string, Actuals>();
   for (const p of punchesThisWeek) {
     const ymd = formatInTimeZone(p.punchedAt, TZ, "yyyy-MM-dd");
@@ -58,6 +71,8 @@ export default async function SchedulePage() {
     actualByDay.set(ymd, existing);
   }
 
+  const templateLabel =
+    employee.defaultScheduleTemplate?.name ?? employee.defaultSchedule.label;
   const weekRangeLabel = `${formatInTimeZone(weekStart, TZ, "d MMM")} – ${formatInTimeZone(
     addDays(weekStart, 6),
     TZ,
@@ -80,7 +95,7 @@ export default async function SchedulePage() {
               This week
             </h1>
             <p className="mt-1 font-mono text-xs text-muted-foreground tabular-nums">
-              {weekRangeLabel} · {s.label}
+              {weekRangeLabel} · {templateLabel}
             </p>
           </div>
           <Badge
@@ -94,15 +109,16 @@ export default async function SchedulePage() {
 
       <div className="rule-double" aria-hidden />
 
-      {/* Week grid */}
       <section aria-label="Week schedule grid" className="flex flex-col gap-3">
         <div className="grid gap-2 md:grid-cols-7">
-          {days.map((day, idx) => {
+          {days.map((day) => {
             const ymd = formatInTimeZone(day, TZ, "yyyy-MM-dd");
-            const dow = idx; // 0=Sun … 6=Sat
-            const dayOff = dow === fridayIdx;
+            const dow = day.getDay(); // 0=Sun..6=Sat (in local TZ; for Djibouti this matches our convention)
+            const pattern = patternByDow.get(dow);
             const isToday = ymd === todayYmd;
             const actuals = actualByDay.get(ymd) ?? {};
+            const dayOff = pattern?.type === "day_off";
+
             return (
               <Card
                 key={ymd}
@@ -133,54 +149,127 @@ export default async function SchedulePage() {
                   ) : null}
                 </header>
 
-                {dayOff ? (
-                  <div className="flex flex-1 items-center justify-center py-3 text-center">
-                    <div className="flex flex-col items-center gap-1.5">
-                      <Sun className="h-4 w-4 text-muted-foreground" />
-                      <span className="label-eyebrow">Day off</span>
-                    </div>
-                  </div>
-                ) : (
-                  <ul className="flex flex-col gap-1.5">
-                    <Slot
-                      icon={Sun}
-                      label="Start"
-                      expected={expectedStart}
-                      actual={actuals["shift_in"]}
-                    />
-                    <Slot
-                      icon={UtensilsCrossed}
-                      label="Lunch out"
-                      expected={expectedLunchOut}
-                      actual={actuals["lunch_out"]}
-                    />
-                    <Slot
-                      icon={Coffee}
-                      label="Lunch in"
-                      expected={expectedLunchIn}
-                      actual={actuals["lunch_in"]}
-                    />
-                    <Slot
-                      icon={Moon}
-                      label="End"
-                      expected={expectedEnd}
-                      actual={actuals["shift_out"]}
-                    />
-                  </ul>
-                )}
+                <DayBody pattern={pattern} actuals={actuals} />
               </Card>
             );
           })}
         </div>
       </section>
 
-      {/* Footnote */}
-      <div className="rounded-sm border border-dashed border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-        Schedule patterns (Fathi split-day, Hawa continuous-day, busy days) ship
-        when the ScheduleTemplate workflow lands. For now everyone runs the
-        default <span className="font-mono">{s.label}</span> template.
-      </div>
+      {!employee.defaultScheduleTemplate ? (
+        <div className="rounded-sm border border-dashed border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+          This employee has no day-pattern template assigned. Showing default
+          split-day pattern. Admin can assign a template at{" "}
+          <span className="font-mono">/admin/employees/&lt;id&gt;/edit</span>.
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function DayBody({
+  pattern,
+  actuals,
+}: {
+  pattern:
+    | {
+        type: string;
+        startTime: string | null;
+        endTime: string | null;
+        lunchOutTime: string | null;
+        lunchInTime: string | null;
+        lunchBreakMinutes: number | null;
+        lunchOnSite: boolean;
+      }
+    | undefined;
+  actuals: Actuals;
+}) {
+  if (!pattern || pattern.type === "day_off") {
+    return (
+      <div className="flex flex-1 items-center justify-center py-3 text-center">
+        <div className="flex flex-col items-center gap-1.5">
+          <Sun className="h-4 w-4 text-muted-foreground" />
+          <span className="label-eyebrow">Day off</span>
+        </div>
+      </div>
+    );
+  }
+  if (pattern.type === "half_day") {
+    return (
+      <ul className="flex flex-col gap-1.5">
+        <Slot
+          icon={Sun}
+          label="Start"
+          expected={pattern.startTime ?? "—"}
+          actual={actuals["shift_in"]}
+        />
+        <Slot
+          icon={Moon}
+          label="End"
+          expected={pattern.endTime ?? "—"}
+          actual={actuals["shift_out"]}
+        />
+      </ul>
+    );
+  }
+  if (pattern.type === "continuous_day") {
+    return (
+      <ul className="flex flex-col gap-1.5">
+        <Slot
+          icon={Sun}
+          label="Start"
+          expected={pattern.startTime ?? "—"}
+          actual={actuals["shift_in"]}
+        />
+        <Slot
+          icon={Coffee}
+          label={`Lunch · ${pattern.lunchBreakMinutes ?? "?"}m on-site`}
+          expected={pattern.lunchOutTime ?? "—"}
+          actual={actuals["lunch_out"]}
+        />
+        <Slot
+          icon={Briefcase}
+          label="Back"
+          expected={pattern.lunchInTime ?? "—"}
+          actual={actuals["lunch_in"]}
+        />
+        <Slot
+          icon={Moon}
+          label="End"
+          expected={pattern.endTime ?? "—"}
+          actual={actuals["shift_out"]}
+        />
+      </ul>
+    );
+  }
+  // split_day
+  return (
+    <ul className="flex flex-col gap-1.5">
+      <Slot
+        icon={Sun}
+        label="Start"
+        expected={pattern.startTime ?? "—"}
+        actual={actuals["shift_in"]}
+      />
+      <Slot
+        icon={UtensilsCrossed}
+        label="Lunch out"
+        expected={pattern.lunchOutTime ?? "—"}
+        actual={actuals["lunch_out"]}
+      />
+      <Slot
+        icon={Coffee}
+        label="Lunch in"
+        expected={pattern.lunchInTime ?? "—"}
+        actual={actuals["lunch_in"]}
+      />
+      <Slot
+        icon={Moon}
+        label="End"
+        expected={pattern.endTime ?? "—"}
+        actual={actuals["shift_out"]}
+      />
+    </ul>
   );
 }
 
@@ -204,7 +293,7 @@ function Slot({
           done ? "text-[var(--brass)]" : "text-muted-foreground/60"
         )}
       />
-      <span className="flex-1 text-muted-foreground">{label}</span>
+      <span className="flex-1 truncate text-muted-foreground">{label}</span>
       <span
         className={cn(
           "font-mono tabular-nums",

@@ -83,6 +83,7 @@ export async function updateEmployeeAction(
     monthlySalary: formData.get("monthlySalary"),
     hireDate: formData.get("hireDate"),
     defaultScheduleId: formData.get("defaultScheduleId"),
+    defaultScheduleTemplateId: formData.get("defaultScheduleTemplateId"),
   });
   if (!parsed.success) {
     return {
@@ -105,6 +106,7 @@ export async function updateEmployeeAction(
       monthlySalary: parsed.data.monthlySalary,
       hireDate: parseYmdInDjibouti(parsed.data.hireDate),
       defaultScheduleId: parsed.data.defaultScheduleId,
+      defaultScheduleTemplateId: parsed.data.defaultScheduleTemplateId,
     },
   });
   await audit({
