@@ -9,48 +9,35 @@ import {
   Bell,
   Database,
   ChevronRight,
-  Wallet,
-  Clock,
-  Hourglass,
-  CalendarDays,
 } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { getCompanyConfig } from "@/lib/config";
+import { db } from "@/lib/db";
+import { CompanyDefaultsForm } from "./CompanyDefaultsForm";
 
 export const metadata = {
   title: "Settings — Portside Time",
 };
 
-/**
- * /admin/settings — the first-class home for everything configurable.
- *
- * Today this page reads from spec defaults (CompanyConfig table doesn't exist
- * yet; it lands in a later PR per the plan). The shape is locked: each card
- * is a real section the user can already understand, with "Edit" disabled and
- * a brass note explaining when persistence ships.
- *
- * Honors the spec §5.1–§5.13 defaults and the open questions from §12.
- */
+const TZ = "Africa/Djibouti";
 
-const SPEC_DEFAULTS = {
-  gracePeriodMinutes: 15,
-  justificationWindowHours: 48,
-  annualLeaveAccrualPerMonth: 2.5,
-  perDiemDefaultAmount: null as number | null, // spec §12 Q1 — TBD
-  weekStartDay: 0, // Sunday
-  dayOffDefault: 5, // Friday
-  timezone: "Africa/Djibouti",
-};
-
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const config = await getCompanyConfig();
+  const updatedByUser = config.updatedBy
+    ? await db.user.findUnique({
+        where: { id: config.updatedBy },
+        select: { email: true },
+      })
+    : null;
+  const updatedAtLabel = config.updatedBy
+    ? formatInTimeZone(config.updatedAt, TZ, "d LLL yyyy · HH:mm")
+    : null;
   return (
     <div className="flex flex-col gap-8">
       {/* Page header */}
@@ -83,43 +70,22 @@ export default function SettingsPage() {
 
       <div className="rule-double" aria-hidden />
 
-      {/* Section: Company defaults */}
+      {/* Section: Company defaults — now editable */}
       <Section
         eyebrow="Operations"
         title="Company defaults"
-        description="Numbers the punch flow + justification workflow read at runtime. Persistence lands in the CompanyConfig PR."
+        description="Numbers the punch flow + justification workflow read at runtime. Changes save immediately and apply on the next request."
       >
-        <div className="grid gap-px overflow-hidden rounded-md border border-border bg-border md:grid-cols-2">
-          <SettingField
-            icon={Hourglass}
-            label="Grace period"
-            value={`${SPEC_DEFAULTS.gracePeriodMinutes} min`}
-            hint="Punch within this window after expected start is on-time. Beyond it: late incident."
-          />
-          <SettingField
-            icon={Clock}
-            label="Justification window"
-            value={`${SPEC_DEFAULTS.justificationWindowHours} h`}
-            hint="Employee has this long to submit a reason before the late incident auto-flips to unjustified."
-          />
-          <SettingField
-            icon={CalendarDays}
-            label="Annual leave accrual"
-            value={`${SPEC_DEFAULTS.annualLeaveAccrualPerMonth} jours / mois`}
-            hint="Per Code du Travail Article 99. Accrues from hire date."
-          />
-          <SettingField
-            icon={Wallet}
-            label="Per diem (busy day)"
-            value={
-              SPEC_DEFAULTS.perDiemDefaultAmount
-                ? `${SPEC_DEFAULTS.perDiemDefaultAmount.toLocaleString()} DJF`
-                : "— not set"
-            }
-            hint="Owed when continuous-day employees stay on-site for lunch. Stakeholder Q12.1 — needs answer."
-            warn={SPEC_DEFAULTS.perDiemDefaultAmount === null}
-          />
-        </div>
+        <CompanyDefaultsForm
+          initial={{
+            gracePeriodMinutes: config.gracePeriodMinutes,
+            justificationWindowHours: config.justificationWindowHours,
+            annualLeaveAccrualPerMonth: config.annualLeaveAccrualPerMonth,
+            perDiemDefaultDjf: config.perDiemDefaultDjf,
+          }}
+          updatedAt={updatedAtLabel}
+          updatedBy={updatedByUser?.email ?? null}
+        />
       </Section>
 
       {/* Section: Schedule templates */}
@@ -173,7 +139,7 @@ export default function SettingsPage() {
             <div className="flex flex-1 flex-col gap-0.5">
               <div className="text-sm">Timezone</div>
               <div className="label-eyebrow font-mono">
-                {SPEC_DEFAULTS.timezone} (UTC+3, no DST)
+                {config.timezone} (UTC+3, no DST)
               </div>
             </div>
             <Badge variant="outline" className="font-mono text-[10px] uppercase">
@@ -301,46 +267,6 @@ function Section({
   );
 }
 
-function SettingField({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  warn = false,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  hint: string;
-  warn?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-2 bg-card p-5">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        <span className="label-eyebrow">{label}</span>
-      </div>
-      <div className="flex items-baseline justify-between gap-3">
-        <div
-          className={`font-display text-2xl tracking-tight ${
-            warn ? "text-[var(--warning)]" : "text-foreground"
-          }`}
-        >
-          {value}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled
-          className="h-7 px-2 text-[10px] uppercase tracking-wider"
-        >
-          Edit
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">{hint}</p>
-    </div>
-  );
-}
 
 function CardLink({
   href,

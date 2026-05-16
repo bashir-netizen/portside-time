@@ -1,6 +1,8 @@
 /**
- * Annual-leave accrual per CLAUDE.md §6: 2.5 days/month of completed service,
- * capped at 30 days/year.
+ * Annual-leave accrual per CLAUDE.md §6: N days/month of completed service,
+ * capped at 30 days/year. N defaults to 2.5 per spec (Djibouti Article 99)
+ * and is overridable per `accrualPerMonth` (read from CompanyConfig in the
+ * server-side caller).
  *
  * Returns the *current* expected balance given the hire date — used when
  * seeding new employees and when admin views the profile. We don't store a
@@ -9,10 +11,11 @@
 export function accruedDaysSinceHire(
   hireDate: Date,
   now: Date = new Date(),
+  accrualPerMonth: number = 2.5,
 ): number {
   if (now <= hireDate) return 0;
   const monthsCompleted = monthDiff(hireDate, now);
-  return Math.min(30, monthsCompleted * 2.5);
+  return Math.min(30, monthsCompleted * accrualPerMonth);
 }
 
 function monthDiff(from: Date, to: Date): number {

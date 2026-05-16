@@ -237,6 +237,26 @@ model DayPattern {
   @@map("day_patterns")
 }
 
+// ---------- Company configuration ----------
+//
+// Singleton — only one row, id="default". Read everywhere a default value
+// would otherwise be hard-coded (grace period, justification window, leave
+// accrual rate, per-diem amount). Per spec §4.
+model CompanyConfig {
+  id                            String   @id @default("default")
+  gracePeriodMinutes            Int      @default(15)  @map("grace_period_minutes")
+  justificationWindowHours      Int      @default(48)  @map("justification_window_hours")
+  annualLeaveAccrualPerMonth    Float    @default(2.5) @map("annual_leave_accrual_per_month")
+  perDiemDefaultDjf             Int?     @map("per_diem_default_djf")
+  weekStartDay                  Int      @default(0)   @map("week_start_day")     // 0=Sun
+  dayOffDefault                 Int      @default(5)   @map("day_off_default")    // 5=Fri
+  timezone                      String   @default("Africa/Djibouti")
+  updatedAt                     DateTime @updatedAt    @map("updated_at")
+  updatedBy                     String?  @map("updated_by")
+
+  @@map("company_config")
+}
+
 // ---------- Auth ----------
 
 model User {

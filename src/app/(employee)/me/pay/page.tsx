@@ -12,6 +12,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { readSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { accruedDaysSinceHire } from "@/lib/leave/accrual";
+import { getCompanyConfig } from "@/lib/config";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -45,7 +46,12 @@ export default async function PayPage() {
     },
     select: { days: true },
   });
-  const accrued = accruedDaysSinceHire(employee.hireDate);
+  const config = await getCompanyConfig();
+  const accrued = accruedDaysSinceHire(
+    employee.hireDate,
+    new Date(),
+    config.annualLeaveAccrualPerMonth,
+  );
   const usedAnnual = allApprovedAnnual.reduce((s, r) => s + r.days, 0);
   const remainingAnnual = Math.max(0, accrued - usedAnnual);
 

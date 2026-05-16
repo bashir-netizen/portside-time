@@ -6,6 +6,7 @@ import { readSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { LEAVE_TYPE_LABELS, type LeaveType } from "@/schemas/leave";
 import { accruedDaysSinceHire } from "@/lib/leave/accrual";
+import { getCompanyConfig } from "@/lib/config";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -29,7 +30,12 @@ export default async function MyLeavePage() {
   ]);
   if (!employee) redirect("/login");
 
-  const accrued = accruedDaysSinceHire(employee.hireDate);
+  const config = await getCompanyConfig();
+  const accrued = accruedDaysSinceHire(
+    employee.hireDate,
+    new Date(),
+    config.annualLeaveAccrualPerMonth,
+  );
   const used = requests
     .filter((r) => r.leaveType === "annual" && r.status === "approved")
     .reduce((sum, r) => sum + r.days, 0);
