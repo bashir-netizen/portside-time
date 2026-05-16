@@ -1,5 +1,17 @@
 # Path B — HP laptop + Cloudflare Tunnel setup
 
+> ⚠️ **Historical / discontinued (2026-05-16).** This path was attempted and
+> abandoned. Docker Desktop on Windows is incompatible with SSH-only ops
+> (its credential helper requires an interactive Windows logon session); git
+> on Windows mangles `entrypoint.sh` with CRLF; compose's Linux absolute
+> paths don't translate cleanly to Windows. The repo and its tooling are
+> designed for Linux. See `RUNBOOK.md` for the active deployment path
+> (DigitalOcean + Cloudflare Tunnel + Access + GHCR + Litestream).
+>
+> Kept for reference only — don't follow these steps.
+
+---
+
 The completely-free deployment. The HP laptop sits at the office and runs the
 app; Cloudflare Tunnel exposes it at `https://time.portside.dj` without
 opening any inbound ports on the office network.
