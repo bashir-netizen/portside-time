@@ -11,6 +11,7 @@ import {
   Users,
   CalendarClock,
   Clock,
+  AlertTriangle,
   Plane,
   ScrollText,
   FileBarChart2,
@@ -51,6 +52,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/employees", label: "Employees", icon: Users, primary: true },
       { href: "/admin/leave", label: "Leave", icon: Plane, primary: true },
+      { href: "/admin/late", label: "Late incidents", icon: AlertTriangle },
       { href: "/admin/schedules", label: "Schedules", icon: CalendarClock },
     ],
   },

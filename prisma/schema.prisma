@@ -40,6 +40,7 @@ model Employee {
   punches        Punch[]
   leaveRequests  LeaveRequest[]
   monthlyReports MonthlyReport[]
+  lateIncidents  LateIncident[]
 
   @@map("employees")
 }
@@ -58,7 +59,8 @@ model Punch {
   isCorrected Boolean  @default(false) @map("is_corrected")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  corrections PunchCorrection[]
+  corrections   PunchCorrection[]
+  lateIncidents LateIncident[]
 
   @@index([employeeId, punchedAt])
   @@index([punchedAt])
@@ -232,6 +234,66 @@ model CompanyConfig {
   updatedBy                     String?  @map("updated_by")
 
   @@map("company_config")
+}
+
+// ---------- Late incidents (spec §5.5 + §5.6) ----------
+//
+// Created automatically the moment a late shift_in / early shift_out punch
+// lands (see src/lib/punch/late-incident.ts). Employee has
+// CompanyConfig.justificationWindowHours to submit a reason via /me/justify;
+// if they don't, a periodic job flips it to `auto_unjustified`. Admin can
+// then accept or reject from /admin/late.
+//
+// Counts toward Article 59 al. 9: 3+ unjustified incidents in any rolling
+// 30-day window flags the employee.
+
+model LateIncident {
+  id            String    @id @default(cuid())
+
+  employeeId    String    @map("employee_id")
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  // Punch that triggered this incident. SetNull because corrections may
+  // void the underlying punch, but we still want to preserve the incident
+  // history for audit purposes.
+  punchId       String?   @map("punch_id")
+  punch         Punch?    @relation(fields: [punchId], references: [id], onDelete: SetNull)
+
+  // Calendar day in Djibouti (00:00 of that day in UTC).
+  incidentDate  DateTime  @map("incident_date")
+
+  // late_arrival | early_leave | missed_punch_out
+  kind          String
+
+  // Magnitude of the incident in whole minutes. For late_arrival: how many
+  // minutes past (startTime + graceMin) the shift_in landed. For early_leave:
+  // how many minutes before endTime the shift_out landed.
+  minutes       Int
+
+  // Lifecycle:
+  //   pending_justification — created, waiting for employee to submit reason
+  //   submitted             — employee submitted reason, admin needs to decide
+  //   justified             — admin accepted; does NOT count toward 3-in-30
+  //   manager_unjustified   — admin rejected reason; counts toward 3-in-30
+  //   auto_unjustified      — window elapsed without submission; counts
+  status        String    @default("pending_justification")
+
+  reason        String?
+  submittedAt   DateTime? @map("submitted_at")
+
+  decidedAt     DateTime? @map("decided_at")
+  decidedBy     String?   @map("decided_by") // admin User.id
+  decisionNotes String?   @map("decision_notes")
+
+  autoFlippedAt DateTime? @map("auto_flipped_at")
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([employeeId, incidentDate])
+  @@index([status])
+  @@index([incidentDate])
+  @@map("late_incidents")
 }
 
 // ---------- Auth ----------

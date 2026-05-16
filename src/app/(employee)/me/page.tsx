@@ -7,6 +7,7 @@ import {
   Sun,
   Coffee,
   UtensilsCrossed,
+  AlertTriangle,
 } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { readSession } from "@/lib/auth/session";
@@ -27,13 +28,19 @@ export default async function MePage() {
   const session = await readSession();
   if (!session?.employeeId || session.role !== "employee") redirect("/login");
 
-  const [employee, todays, dayPattern] = await Promise.all([
+  const [employee, todays, dayPattern, pendingJustifications] = await Promise.all([
     db.employee.findUnique({
       where: { id: session.employeeId },
       include: { defaultScheduleTemplate: true },
     }),
     getTodaysPunches(session.employeeId),
     getDayPatternForEmployee(session.employeeId),
+    db.lateIncident.count({
+      where: {
+        employeeId: session.employeeId,
+        status: "pending_justification",
+      },
+    }),
   ]);
   if (!employee) redirect("/login");
 
@@ -74,6 +81,25 @@ export default async function MePage() {
           <StatusBadge status={status} isDayOff={isDayOff} />
         </div>
       </header>
+
+      {pendingJustifications > 0 ? (
+        <Link
+          href="/me/justify"
+          className="group flex items-center gap-3 rounded-sm border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-4 py-3 transition-colors hover:bg-[var(--warning)]/15"
+        >
+          <AlertTriangle className="h-5 w-5 text-[var(--warning)]" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-foreground">
+              {pendingJustifications} incident
+              {pendingJustifications === 1 ? "" : "s"} to justify
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Explain what happened before the window closes — tap to open.
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      ) : null}
 
       {/* Today's sequence — adapts to the day-pattern type */}
       <section

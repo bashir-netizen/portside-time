@@ -10,6 +10,7 @@ import {
   Plane,
   Wallet,
   UserRound,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ export const EMPLOYEE_NAV: NavItem[] = [
   { href: "/me", label: "Today", icon: Home },
   { href: "/me/schedule", label: "Schedule", icon: Calendar },
   { href: "/me/leave", label: "Leave", icon: Plane },
+  { href: "/me/justify", label: "Justify", icon: AlertTriangle },
   { href: "/me/pay", label: "Pay", icon: Wallet },
   { href: "/me/profile", label: "Profile", icon: UserRound },
 ];

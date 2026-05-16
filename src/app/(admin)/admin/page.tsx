@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Clock,
   TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { db } from "@/lib/db";
@@ -38,6 +39,7 @@ export default async function AdminDashboard() {
     upcomingLeave,
     pendingIps,
     blockedAttempts,
+    pendingLateDecisions,
   ] = await Promise.all([
     db.employee.findMany({
       where: { status: "active" },
@@ -74,6 +76,7 @@ export default async function AdminDashboard() {
         createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
       },
     }),
+    db.lateIncident.count({ where: { status: "submitted" } }),
   ]);
 
   // Build today's per-employee state, including last effective punch.
@@ -194,7 +197,7 @@ export default async function AdminDashboard() {
       {/* Pending approvals + alerts strip */}
       <section
         aria-label="Pending approvals"
-        className="grid gap-3 md:grid-cols-3"
+        className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
       >
         <ApprovalCard
           href="/admin/leave"
@@ -203,6 +206,14 @@ export default async function AdminDashboard() {
           icon={Plane}
           singular="pending request"
           plural="pending requests"
+        />
+        <ApprovalCard
+          href="/admin/late"
+          eyebrow="Late incidents"
+          count={pendingLateDecisions}
+          icon={AlertTriangle}
+          singular="awaiting decision"
+          plural="awaiting decision"
         />
         <ApprovalCard
           href="/admin/ip-allowlist"

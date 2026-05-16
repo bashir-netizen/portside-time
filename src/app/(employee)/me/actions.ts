@@ -11,6 +11,7 @@ import { checkDevice } from "@/lib/device/check";
 import { getTodaysPunches } from "@/lib/punch/repo";
 import { checkSequence } from "@/lib/punch/sequence";
 import { getDayPatternForEmployee } from "@/lib/punch/day-pattern";
+import { maybeRecordLateIncident } from "@/lib/punch/late-incident";
 import { isPunchType, type PunchType } from "@/lib/punch/types";
 
 type PunchActionResult =
@@ -168,16 +169,39 @@ export async function punchAction(formData: FormData): Promise<PunchActionResult
   }
 
   // All checks pass — record the punch.
-  await db.punch.create({
+  const punchedAt = new Date();
+  const punch = await db.punch.create({
     data: {
       employeeId: session.employeeId,
       punchType: requested,
-      punchedAt: new Date(),
+      punchedAt,
       sourceIp: ip,
       deviceId: deviceIdForPunch,
       userAgent,
     },
   });
+
+  // Late-incident detection — only triggers on shift_in (late arrival) or
+  // shift_out (early leave). Idempotent: same-day duplicates are absorbed.
+  const incident = await maybeRecordLateIncident({
+    employeeId: session.employeeId,
+    punchId: punch.id,
+    punchType: requested,
+    punchedAt,
+    pattern: dayPattern,
+  });
+  if (incident) {
+    await audit({
+      actor: { type: "employee", id: session.employeeId },
+      action: "late_incident_created",
+      entityType: "late_incident",
+      entityId: incident.id,
+      sourceIp: ip,
+      userAgent,
+      deviceId: deviceIdForPunch ?? undefined,
+      after: { kind: incident.kind, minutes: incident.minutes, punchType: requested },
+    });
+  }
   if (deviceIdForPunch) {
     await db.device.update({
       where: { id: deviceIdForPunch },
