@@ -25,7 +25,7 @@ const DJF = new Intl.NumberFormat("fr-DJ", {
 export default async function EmployeesPage() {
   const employees = await db.employee.findMany({
     orderBy: [{ status: "asc" }, { fullName: "asc" }],
-    include: { defaultSchedule: true },
+    include: { defaultScheduleTemplate: true },
   });
 
   const active = employees.filter((e) => e.status === "active").length;
@@ -106,7 +106,7 @@ export default async function EmployeesPage() {
                         </span>
                         <span className="mt-1.5 font-mono text-xs text-foreground/80 tabular-nums">
                           {DJF.format(e.monthlySalary)} / mo ·{" "}
-                          {e.defaultSchedule.label}
+                          {e.defaultScheduleTemplate?.name ?? "Unassigned"}
                         </span>
                       </div>
                       <ChevronRight
@@ -163,7 +163,7 @@ export default async function EmployeesPage() {
                       {e.position}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {e.defaultSchedule.label}
+                      {e.defaultScheduleTemplate?.name ?? "Unassigned"}
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums text-foreground">
                       {DJF.format(e.monthlySalary)}

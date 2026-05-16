@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Schedule = { id: string; label: string };
 type Template = { id: string; name: string; description: string | null };
 
 type Result =
@@ -24,7 +23,6 @@ type Action = (prev: Result | null, fd: FormData) => Promise<Result>;
 
 export function EmployeeEditForm({
   initial,
-  schedules,
   templates,
   action,
 }: {
@@ -33,10 +31,8 @@ export function EmployeeEditForm({
     position: string;
     monthlySalary: number;
     hireDate: string; // YYYY-MM-DD
-    defaultScheduleId: string;
-    defaultScheduleTemplateId: string; // "" = none
+    defaultScheduleTemplateId: string;
   };
-  schedules: Schedule[];
   templates: Template[];
   action: Action;
 }) {
@@ -87,21 +83,16 @@ export function EmployeeEditForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="defaultScheduleTemplateId">
-          Schedule template
-        </Label>
+        <Label htmlFor="defaultScheduleTemplateId">Schedule template</Label>
         <Select
           name="defaultScheduleTemplateId"
-          defaultValue={initial.defaultScheduleTemplateId || "__none__"}
+          defaultValue={initial.defaultScheduleTemplateId}
+          required
         >
-          <SelectTrigger
-            id="defaultScheduleTemplateId"
-            className="bg-card"
-          >
+          <SelectTrigger id="defaultScheduleTemplateId" className="bg-card">
             <SelectValue placeholder="Pick a template" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">No template (legacy)</SelectItem>
             {templates.map((t) => (
               <SelectItem key={t.id} value={t.id}>
                 {t.name}
@@ -117,36 +108,6 @@ export function EmployeeEditForm({
         {fieldErrors?.defaultScheduleTemplateId ? (
           <p className="text-xs text-destructive">
             {fieldErrors.defaultScheduleTemplateId[0]}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="defaultScheduleId">
-          Legacy schedule (for back-compat)
-        </Label>
-        <Select
-          name="defaultScheduleId"
-          defaultValue={initial.defaultScheduleId}
-        >
-          <SelectTrigger id="defaultScheduleId" className="bg-card">
-            <SelectValue placeholder="Pick a schedule" />
-          </SelectTrigger>
-          <SelectContent>
-            {schedules.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-[10px] text-muted-foreground">
-          Required by the old schema. Will be dropped in a future PR once
-          every employee runs on a template.
-        </p>
-        {fieldErrors?.defaultScheduleId ? (
-          <p className="text-xs text-destructive">
-            {fieldErrors.defaultScheduleId[0]}
           </p>
         ) : null}
       </div>

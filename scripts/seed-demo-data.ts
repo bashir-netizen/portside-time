@@ -127,17 +127,16 @@ async function ensurePeople() {
     templatesByName.set(t.name, t.id);
   }
 
-  // Need any schedule for the legacy defaultScheduleId (still NOT NULL).
-  const anyLegacy = await db.schedule.findFirst();
-  if (!anyLegacy) throw new Error("No legacy Schedule rows present");
-
   // Set every employee to PIN 000000 too — easier demo login.
   const pinHash = await hashPassword("000000");
 
   for (const p of PEOPLE) {
     const matches = Array.isArray(p.matchName) ? p.matchName : [p.matchName];
+    // Also match the target newName so re-runs are idempotent — once renamed,
+    // the original placeholder name won't exist, but the newName will.
+    const matchPool = Array.from(new Set([...matches, p.newName]));
     const existing = await db.employee.findFirst({
-      where: { fullName: { in: matches } },
+      where: { fullName: { in: matchPool } },
     });
     const templateId = templatesByName.get(p.templateName);
     if (!templateId) {
@@ -149,7 +148,6 @@ async function ensurePeople() {
       position: p.position,
       monthlySalary: p.monthlySalary,
       hireDate: djiboutiInstant(p.hireYmd, "00:00"),
-      defaultScheduleId: anyLegacy.id,
       defaultScheduleTemplateId: templateId,
       pinHash,
       status: "active",
@@ -180,16 +178,24 @@ async function ensurePunches() {
     new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
   );
 
-  // Wipe demo-window punches for these employees so re-runs are clean.
+  // Punches are append-only at the DB level (trigger blocks DELETE), so the
+  // idempotency strategy is: for each (employee, day), skip if any punch
+  // already exists for that calendar day.
   const windowStart = djiboutiInstant(oldestYmd, "00:00");
   const windowEnd = djiboutiInstant(todayYmd, "00:00"); // exclusive — don't touch today
-  const deleted = await db.punch.deleteMany({
+
+  // Build a set of "employeeId|YYYY-MM-DD" keys that already have punches.
+  const existingPunches = await db.punch.findMany({
     where: {
       employeeId: { in: employees.map((e) => e.id) },
       punchedAt: { gte: windowStart, lt: windowEnd },
     },
+    select: { employeeId: true, punchedAt: true },
   });
-  console.log(`  - cleared ${deleted.count} existing punches in the window`);
+  const seededDayKeys = new Set(
+    existingPunches.map((p) => `${p.employeeId}|${ymdInDjibouti(p.punchedAt)}`),
+  );
+  console.log(`  · ${seededDayKeys.size} (employee, day) pairs already have punches — skipping those`);
 
   // Look up holidays to skip
   const holidayDates = new Set(
@@ -199,6 +205,7 @@ async function ensurePunches() {
   );
 
   let createdCount = 0;
+  let skippedCount = 0;
 
   // Iterate each day in the window
   for (
@@ -218,6 +225,10 @@ async function ensurePunches() {
       if (!template) continue;
       const pattern = template.dayPatterns.find((p) => p.dayOfWeek === dow);
       if (!pattern || pattern.type === "day_off") continue;
+      if (seededDayKeys.has(`${emp.id}|${ymd}`)) {
+        skippedCount++;
+        continue;
+      }
 
       // Build the punches for this day-pattern
       type PunchTime = { punchType: string; hhmm: string };
@@ -263,7 +274,7 @@ async function ensurePunches() {
       }
     }
   }
-  console.log(`  + created ${createdCount} punches across ${employees.length} employees × 14 days`);
+  console.log(`  + created ${createdCount} punches across ${employees.length} employees × 14 days (skipped ${skippedCount} already-seeded day(s))`);
 }
 
 async function ensureLeaveRequests() {

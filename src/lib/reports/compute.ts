@@ -52,9 +52,25 @@ export async function computeEmployeeReport(args: {
 }): Promise<EmployeeReport> {
   const employee = await db.employee.findUnique({
     where: { id: args.employeeId },
-    include: { defaultSchedule: true },
+    include: {
+      defaultScheduleTemplate: { include: { dayPatterns: true } },
+    },
   });
   if (!employee) throw new Error("Employee not found");
+  if (!employee.defaultScheduleTemplate) {
+    throw new Error(
+      `Employee ${employee.id} has no schedule template assigned`,
+    );
+  }
+  // Index day patterns by day-of-week (0=Sun .. 6=Sat) for quick lookup
+  // during the per-day loop.
+  const patternByDow = new Map<
+    number,
+    (typeof employee.defaultScheduleTemplate.dayPatterns)[number]
+  >();
+  for (const dp of employee.defaultScheduleTemplate.dayPatterns) {
+    patternByDow.set(dp.dayOfWeek, dp);
+  }
 
   const [effective, leave, holidays, adjustments] = await Promise.all([
     getEffectivePunches({
@@ -89,15 +105,6 @@ export async function computeEmployeeReport(args: {
     punchesByDay.get(key)!.push(p);
   }
 
-  const schedule = {
-    shiftStart: employee.defaultSchedule.shiftStart,
-    lunchStart: employee.defaultSchedule.lunchStart,
-    lunchEnd: employee.defaultSchedule.lunchEnd,
-    shiftEnd: employee.defaultSchedule.shiftEnd,
-  };
-  const workDays = JSON.parse(employee.defaultSchedule.workDays) as string[];
-  const workDaySet = new Set(workDays);
-
   const daily: EmployeeReport["daily"] = [];
   let totalWorkedMin = 0;
   let totalLateMin = 0;
@@ -105,16 +112,43 @@ export async function computeEmployeeReport(args: {
   let scheduledHours = 0;
   let unauthAbsenceDays = 0;
 
-  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const dayMs = 24 * 60 * 60 * 1000;
   for (
     let d = new Date(args.periodStart);
     d.getTime() < args.periodEnd.getTime();
     d = new Date(d.getTime() + dayMs)
   ) {
-    const dayName = DAY_NAMES[d.getUTCDay()]!;
-    const isWorkDay = workDaySet.has(dayName);
-    if (isWorkDay) scheduledHours += 8;
+    // 0=Sun .. 6=Sat in UTC (which is the same as Djibouti TZ for whole
+    // days since the period boundaries are aligned to Djibouti midnight)
+    const dow = d.getUTCDay();
+    const pattern = patternByDow.get(dow);
+    const isWorkDay = !!pattern && pattern.type !== "day_off";
+
+    // Schedule hours per day-type: split + continuous = 8h, half = 4h.
+    // Adjust later as needed; reports use this as the scheduled baseline.
+    if (isWorkDay) {
+      scheduledHours += pattern!.type === "half_day" ? 4 : 8;
+    }
+
+    // Build the legacy {shiftStart, lunchStart, lunchEnd, shiftEnd} shape
+    // that calcDaily expects, from the day pattern. For half-day, lunch is
+    // a zero-width window at end-of-shift. For day-off, calcDaily isn't
+    // called.
+    const schedule = pattern && isWorkDay
+      ? pattern.type === "half_day"
+        ? {
+            shiftStart: pattern.startTime ?? "08:00",
+            lunchStart: pattern.endTime ?? "12:00",
+            lunchEnd: pattern.endTime ?? "12:00",
+            shiftEnd: pattern.endTime ?? "12:00",
+          }
+        : {
+            shiftStart: pattern.startTime ?? "08:00",
+            lunchStart: pattern.lunchOutTime ?? "12:00",
+            lunchEnd: pattern.lunchInTime ?? "13:00",
+            shiftEnd: pattern.endTime ?? "17:00",
+          }
+      : { shiftStart: "08:00", lunchStart: "12:00", lunchEnd: "13:00", shiftEnd: "17:00" };
 
     const punches = (punchesByDay.get(dayKey(d)) ?? []).map((p) => ({
       punchType: p.punchType as PunchType,

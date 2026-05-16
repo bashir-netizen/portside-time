@@ -29,7 +29,6 @@ export default async function SchedulePage() {
   const employee = await db.employee.findUnique({
     where: { id: session.employeeId },
     include: {
-      defaultSchedule: true,
       defaultScheduleTemplate: {
         include: {
           dayPatterns: { orderBy: { dayOfWeek: "asc" } },
@@ -72,7 +71,7 @@ export default async function SchedulePage() {
   }
 
   const templateLabel =
-    employee.defaultScheduleTemplate?.name ?? employee.defaultSchedule.label;
+    employee.defaultScheduleTemplate?.name ?? "Unassigned";
   const weekRangeLabel = `${formatInTimeZone(weekStart, TZ, "d MMM")} – ${formatInTimeZone(
     addDays(weekStart, 6),
     TZ,

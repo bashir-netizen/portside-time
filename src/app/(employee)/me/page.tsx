@@ -30,7 +30,7 @@ export default async function MePage() {
   const [employee, todays, dayPattern] = await Promise.all([
     db.employee.findUnique({
       where: { id: session.employeeId },
-      include: { defaultSchedule: true, defaultScheduleTemplate: true },
+      include: { defaultScheduleTemplate: true },
     }),
     getTodaysPunches(session.employeeId),
     getDayPatternForEmployee(session.employeeId),
@@ -57,7 +57,9 @@ export default async function MePage() {
   );
 
   const templateLabel =
-    dayPattern.templateName ?? employee.defaultSchedule.label;
+    dayPattern.templateName ??
+    employee.defaultScheduleTemplate?.name ??
+    "Unassigned";
   const isDayOff = dayPattern.type === "day_off";
 
   return (

@@ -1,18 +1,14 @@
-import Link from "next/link";
 import {
-  Plus,
   CalendarClock,
-  ChevronRight,
   Sun,
   Moon,
   UtensilsCrossed,
   Coffee,
-  Sparkles,
   Coins,
+  Sparkles,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -21,15 +17,13 @@ export const metadata = { title: "Schedules — Portside Time" };
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default async function SchedulesPage() {
-  const [legacySchedules, templates] = await Promise.all([
-    db.schedule.findMany({ orderBy: { label: "asc" } }),
-    db.scheduleTemplate.findMany({
-      orderBy: { name: "asc" },
-      include: {
-        dayPatterns: { orderBy: { dayOfWeek: "asc" } },
-      },
-    }),
-  ]);
+  const templates = await db.scheduleTemplate.findMany({
+    orderBy: { name: "asc" },
+    include: {
+      dayPatterns: { orderBy: { dayOfWeek: "asc" } },
+      _count: { select: { employees: true } },
+    },
+  });
 
   return (
     <div className="flex flex-col gap-7">
@@ -44,25 +38,15 @@ export default async function SchedulesPage() {
               <span className="font-mono tabular-nums">
                 {templates.length}
               </span>{" "}
-              day-pattern template{templates.length === 1 ? "" : "s"}
-              {" · "}
-              <span className="font-mono tabular-nums">
-                {legacySchedules.length}
-              </span>{" "}
-              legacy schedule{legacySchedules.length === 1 ? "" : "s"}
+              day-pattern template{templates.length === 1 ? "" : "s"} · assigned
+              to employees from <span className="font-mono">/admin/employees</span>
             </p>
           </div>
-          <Button asChild className="gap-1.5">
-            <Link href="/admin/schedules/new">
-              <Plus className="h-4 w-4" /> New
-            </Link>
-          </Button>
         </div>
       </header>
 
       <div className="rule-double" aria-hidden />
 
-      {/* Schedule templates — the Fathi/Hawa work */}
       <section
         aria-label="Day-pattern templates"
         className="flex flex-col gap-3"
@@ -72,15 +56,14 @@ export default async function SchedulesPage() {
           <h2 className="font-display text-2xl tracking-tight">
             Day-pattern templates
           </h2>
-          <Badge className="border-[var(--brass)]/30 bg-[var(--brass)]/15 font-mono text-[10px] uppercase tracking-wider text-[var(--brass)] hover:bg-[var(--brass)]/15">
-            New
-          </Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          Per spec §5.3 — defines a 7-day pattern with different day types
-          (split-day, continuous-day, half-day, day-off). Assign one to each
-          employee from <span className="font-mono">/admin/employees/&lt;id&gt;/edit</span>;
-          the punch flow then branches on today's day-pattern type.
+          Each template defines a 7-day pattern with different day types
+          (split-day, continuous-day, half-day, day-off). The punch flow
+          branches on today's day-pattern type for the employee's assigned
+          template. Editing templates from the UI is on the backlog — for
+          now, change via{" "}
+          <span className="font-mono">prisma/seed.ts</span>.
         </p>
 
         <div className="grid gap-3 md:grid-cols-2">
@@ -88,76 +71,6 @@ export default async function SchedulesPage() {
             <TemplateCard key={t.id} template={t} />
           ))}
         </div>
-      </section>
-
-      {/* Legacy schedules — what employees are still attached to */}
-      <section aria-label="Legacy schedules" className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-display text-2xl tracking-tight">
-            Active schedules
-          </h2>
-          <Badge
-            variant="outline"
-            className="font-mono text-[10px] uppercase tracking-wider"
-          >
-            Legacy · employees use these
-          </Badge>
-        </div>
-        {legacySchedules.length === 0 ? (
-          <Card className="bg-card p-8 text-center">
-            <CalendarClock className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-3 font-display text-xl">No schedules yet</p>
-          </Card>
-        ) : (
-          <Card className="bg-card p-0">
-            <ul className="divide-y divide-border">
-              {legacySchedules.map((s) => {
-                const days = JSON.parse(s.workDays) as string[];
-                return (
-                  <li key={s.id}>
-                    <Link
-                      href={`/admin/schedules/${s.id}/edit`}
-                      className="group flex items-center gap-3 px-5 py-4 transition-colors hover:bg-muted/40"
-                    >
-                      <span
-                        aria-hidden
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-background text-muted-foreground"
-                      >
-                        <CalendarClock
-                          className="h-4 w-4"
-                          strokeWidth={1.75}
-                        />
-                      </span>
-                      <div className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className="font-medium">{s.label}</span>
-                        <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                          {s.shiftStart}–{s.lunchStart} · {s.lunchEnd}–
-                          {s.shiftEnd}
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {days.map((d) => (
-                            <Badge
-                              key={d}
-                              variant="outline"
-                              className="font-mono text-[9px] uppercase tracking-wider"
-                            >
-                              {d}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <ChevronRight
-                        className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground"
-                        strokeWidth={1.75}
-                      />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
-        )}
       </section>
     </div>
   );
@@ -180,10 +93,10 @@ type Template = {
   hasBusyDayExtension: boolean;
   busyDayEndTime: string | null;
   dayPatterns: DayPattern[];
+  _count: { employees: number };
 };
 
 function TemplateCard({ template }: { template: Template }) {
-  // Compute total work hours per week (rough)
   let totalMinutes = 0;
   for (const dp of template.dayPatterns) {
     if (dp.type === "day_off") continue;
@@ -206,6 +119,7 @@ function TemplateCard({ template }: { template: Template }) {
     totalMinutes += span - breakMin;
   }
   const hoursPerWeek = (totalMinutes / 60).toFixed(2);
+  const employeeCount = template._count.employees;
 
   return (
     <Card className="border-[var(--brass)]/30 bg-[var(--brass)]/5 p-0">
@@ -230,6 +144,12 @@ function TemplateCard({ template }: { template: Template }) {
                 className="font-mono text-[10px] uppercase tracking-wider"
               >
                 {hoursPerWeek} h / wk
+              </Badge>
+              <Badge
+                variant="outline"
+                className="font-mono text-[10px] uppercase tracking-wider"
+              >
+                {employeeCount} employee{employeeCount === 1 ? "" : "s"}
               </Badge>
               {template.hasBusyDayExtension ? (
                 <Badge className="border-[var(--warning)]/30 bg-[var(--warning)]/15 font-mono text-[10px] uppercase tracking-wider text-foreground hover:bg-[var(--warning)]/15">

@@ -7,13 +7,9 @@ export const EmployeeCreateSchema = z.object({
   position: z.string().min(1).max(100),
   monthlySalary: z.coerce.number().int().min(0),
   hireDate: z.string().regex(YMD, "Use YYYY-MM-DD"),
-  defaultScheduleId: z.string().min(1),
-  // New: optional ScheduleTemplate (the day-pattern-aware one). Empty string
-  // or the sentinel "__none__" both mean "no template assigned".
-  defaultScheduleTemplateId: z
-    .string()
-    .optional()
-    .transform((v) => (v && v !== "__none__" ? v : null)),
+  // Required — the day-pattern-aware ScheduleTemplate. Every employee
+  // must be assigned one for the punch flow to know what to expect.
+  defaultScheduleTemplateId: z.string().min(1, "Pick a schedule template"),
   email: z.string().email().toLowerCase().optional(),
 });
 

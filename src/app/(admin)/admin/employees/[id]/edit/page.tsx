@@ -17,12 +17,8 @@ export default async function EditEmployeePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [employee, schedules, templates] = await Promise.all([
+  const [employee, templates] = await Promise.all([
     db.employee.findUnique({ where: { id } }),
-    db.schedule.findMany({
-      select: { id: true, label: true },
-      orderBy: { label: "asc" },
-    }),
     db.scheduleTemplate.findMany({
       select: { id: true, name: true, description: true },
       orderBy: { name: "asc" },
@@ -67,11 +63,9 @@ export default async function EditEmployeePage({
             position: employee.position,
             monthlySalary: employee.monthlySalary,
             hireDate: formatInTimeZone(employee.hireDate, TZ, "yyyy-MM-dd"),
-            defaultScheduleId: employee.defaultScheduleId,
             defaultScheduleTemplateId:
               employee.defaultScheduleTemplateId ?? "",
           }}
-          schedules={schedules}
           templates={templates}
           action={bound}
         />

@@ -28,7 +28,6 @@ export async function createEmployeeAction(
     position: formData.get("position"),
     monthlySalary: formData.get("monthlySalary"),
     hireDate: formData.get("hireDate"),
-    defaultScheduleId: formData.get("defaultScheduleId"),
     defaultScheduleTemplateId: formData.get("defaultScheduleTemplateId"),
   });
   if (!parsed.success) {
@@ -48,7 +47,6 @@ export async function createEmployeeAction(
       position: parsed.data.position,
       monthlySalary: parsed.data.monthlySalary,
       hireDate: parseYmdInDjibouti(parsed.data.hireDate),
-      defaultScheduleId: parsed.data.defaultScheduleId,
       defaultScheduleTemplateId: parsed.data.defaultScheduleTemplateId,
       pinHash,
       status: "active",
@@ -84,7 +82,6 @@ export async function updateEmployeeAction(
     position: formData.get("position"),
     monthlySalary: formData.get("monthlySalary"),
     hireDate: formData.get("hireDate"),
-    defaultScheduleId: formData.get("defaultScheduleId"),
     defaultScheduleTemplateId: formData.get("defaultScheduleTemplateId"),
   });
   if (!parsed.success) {
@@ -107,7 +104,6 @@ export async function updateEmployeeAction(
       position: parsed.data.position,
       monthlySalary: parsed.data.monthlySalary,
       hireDate: parseYmdInDjibouti(parsed.data.hireDate),
-      defaultScheduleId: parsed.data.defaultScheduleId,
       defaultScheduleTemplateId: parsed.data.defaultScheduleTemplateId,
     },
   });

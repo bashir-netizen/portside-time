@@ -39,10 +39,7 @@ export default async function EmployeePage({
   const { id } = await params;
   const employee = await db.employee.findUnique({
     where: { id },
-    include: {
-      defaultSchedule: true,
-      defaultScheduleTemplate: true,
-    },
+    include: { defaultScheduleTemplate: true },
   });
   if (!employee) notFound();
 
@@ -161,14 +158,8 @@ export default async function EmployeePage({
           <Field
             icon={CalendarClock}
             label="Schedule template"
-            value={
-              employee.defaultScheduleTemplate?.name ??
-              `${employee.defaultSchedule.label} (legacy)`
-            }
-            hint={
-              employee.defaultScheduleTemplate?.description ??
-              undefined
-            }
+            value={employee.defaultScheduleTemplate?.name ?? "Unassigned"}
+            hint={employee.defaultScheduleTemplate?.description ?? undefined}
           />
           <Field
             icon={Wallet}

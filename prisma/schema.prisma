@@ -25,18 +25,11 @@ model Employee {
   hireDate                    DateTime  @map("hire_date")
   status                      String    @default("active") // active | inactive
 
-  // Legacy flat schedule — kept for back-compat during the template migration.
-  // New code reads defaultScheduleTemplate; this stays so existing rows + the
-  // legacy /admin/schedules editor keep working. Drops in a future PR once
-  // every employee is on a template and we're confident.
-  defaultScheduleId           String    @map("default_schedule_id")
-  defaultSchedule             Schedule  @relation(fields: [defaultScheduleId], references: [id])
-
-  // Day-pattern template — Phase 2. Nullable during migration; backfilled by
-  // scripts/migrate-employees-to-templates.ts. All new reads should prefer
-  // this field; the legacy defaultSchedule is fallback only.
-  defaultScheduleTemplateId   String?           @map("default_schedule_template_id")
-  defaultScheduleTemplate     ScheduleTemplate? @relation(fields: [defaultScheduleTemplateId], references: [id])
+  // Day-pattern template — the source of truth for an employee's expected
+  // punch sequence. Required; every employee must be assigned a template at
+  // creation time.
+  defaultScheduleTemplateId   String           @map("default_schedule_template_id")
+  defaultScheduleTemplate     ScheduleTemplate @relation(fields: [defaultScheduleTemplateId], references: [id])
 
   annualLeaveBalanceDays      Int       @default(0) @map("annual_leave_balance_days")
   pinHash                     String?   @map("pin_hash") // Argon2id; nullable so admin can create employee then set PIN
@@ -179,23 +172,7 @@ model Adjustment {
   @@map("adjustments")
 }
 
-model Schedule {
-  id          String   @id @default(cuid())
-  label       String
-  shiftStart  String   @map("shift_start")   // "HH:mm"
-  lunchStart  String   @map("lunch_start")
-  lunchEnd    String   @map("lunch_end")
-  shiftEnd    String   @map("shift_end")
-  workDays    String   @map("work_days")     // JSON array of "Sat"..."Thu"
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  employees Employee[]
-
-  @@map("schedules")
-}
-
-// ---------- Schedule templates (Phase 2: day-by-day patterns) ----------
+// ---------- Schedule templates (day-by-day patterns) ----------
 //
 // Spec §5.3. Two production patterns at launch:
 //   - Fathi: split-day (lunch off-site) Sun..Thu, day off Fri, half day Sat

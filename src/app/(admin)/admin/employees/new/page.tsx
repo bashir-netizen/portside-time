@@ -8,16 +8,10 @@ import { EmployeeCreateForm } from "./EmployeeCreateForm";
 export const metadata = { title: "New employee — Portside Time" };
 
 export default async function NewEmployeePage() {
-  const [schedules, templates] = await Promise.all([
-    db.schedule.findMany({
-      select: { id: true, label: true },
-      orderBy: { label: "asc" },
-    }),
-    db.scheduleTemplate.findMany({
-      select: { id: true, name: true, description: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  const templates = await db.scheduleTemplate.findMany({
+    select: { id: true, name: true, description: true },
+    orderBy: { name: "asc" },
+  });
 
   // Default the template picker to "Split day (long lunch)" if present —
   // it's the most common pattern for office staff. Otherwise pick whatever
@@ -52,8 +46,6 @@ export default async function NewEmployeePage() {
 
       <Card className="bg-card p-5 md:p-6">
         <EmployeeCreateForm
-          schedules={schedules}
-          defaultScheduleId={schedules[0]?.id ?? ""}
           templates={templates}
           defaultTemplateId={preferredTemplate?.id ?? ""}
           today={todayYmd()}
