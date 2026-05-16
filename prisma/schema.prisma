@@ -183,6 +183,47 @@ model Schedule {
   @@map("schedules")
 }
 
+// ---------- Schedule templates (Phase 2: day-by-day patterns) ----------
+//
+// Spec §5.3. Two production patterns at launch:
+//   - Fathi: split-day (lunch off-site) Sun..Thu, day off Fri, half day Sat
+//   - Hawa:  continuous-day (lunch on-site) Sun..Wed with busy-day extension
+//            to 18h30, half day Thu, day off Fri, split day Sat
+//
+// Coexists with the legacy Schedule model for now. Employee assignment +
+// punch-flow branching ship in the next PR.
+
+model ScheduleTemplate {
+  id                  String        @id @default(cuid())
+  name                String        @unique
+  description         String?
+  hasBusyDayExtension Boolean       @default(false) @map("has_busy_day_extension")
+  busyDayEndTime      String?       @map("busy_day_end_time") // "HH:mm"
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  dayPatterns DayPattern[]
+
+  @@map("schedule_templates")
+}
+
+model DayPattern {
+  id                  String           @id @default(cuid())
+  scheduleTemplateId  String           @map("schedule_template_id")
+  scheduleTemplate    ScheduleTemplate @relation(fields: [scheduleTemplateId], references: [id], onDelete: Cascade)
+  dayOfWeek           Int              @map("day_of_week")        // 0=Sun .. 6=Sat
+  type                String           // split_day | continuous_day | half_day | day_off
+  startTime           String?          @map("start_time")         // "HH:mm"
+  endTime             String?          @map("end_time")
+  lunchOutTime        String?          @map("lunch_out_time")     // for split_day
+  lunchInTime         String?          @map("lunch_in_time")      // for split_day
+  lunchBreakMinutes   Int?             @map("lunch_break_minutes") // for continuous_day
+  lunchOnSite         Boolean          @default(false) @map("lunch_on_site")
+
+  @@unique([scheduleTemplateId, dayOfWeek])
+  @@map("day_patterns")
+}
+
 // ---------- Auth ----------
 
 model User {
