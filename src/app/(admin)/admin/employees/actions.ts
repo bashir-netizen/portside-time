@@ -81,6 +81,7 @@ export async function updateEmployeeAction(
     fullName: formData.get("fullName"),
     position: formData.get("position"),
     monthlySalary: formData.get("monthlySalary"),
+    hireDate: formData.get("hireDate"),
     defaultScheduleId: formData.get("defaultScheduleId"),
   });
   if (!parsed.success) {
@@ -94,9 +95,17 @@ export async function updateEmployeeAction(
   const before = await db.employee.findUnique({ where: { id: employeeId } });
   if (!before) return { ok: false, error: "Employee not found." };
 
+  // hireDate arrives as a YYYY-MM-DD string from the form; convert to the
+  // Djibouti start-of-day UTC Date that the schema stores.
   const after = await db.employee.update({
     where: { id: employeeId },
-    data: parsed.data,
+    data: {
+      fullName: parsed.data.fullName,
+      position: parsed.data.position,
+      monthlySalary: parsed.data.monthlySalary,
+      hireDate: parseYmdInDjibouti(parsed.data.hireDate),
+      defaultScheduleId: parsed.data.defaultScheduleId,
+    },
   });
   await audit({
     actor: { type: "user", id: ctx.session.userId! },

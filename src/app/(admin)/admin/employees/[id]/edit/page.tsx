@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
 import { db } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { updateEmployeeAction } from "../../actions";
 import { EmployeeEditForm } from "./EmployeeEditForm";
+
+const TZ = "Africa/Djibouti";
 
 export const metadata = { title: "Edit employee — Portside Time" };
 
@@ -47,9 +50,9 @@ export default async function EditEmployeePage({
           Edit {employee.fullName}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Hire date is fixed once the employee exists (audit-logged change
-          flow ships in a later PR). Changing the schedule rebases future
-          shift expectations.
+          Every field is editable, including the hire date. Changes are
+          audit-logged with before/after snapshots — editing the hire date
+          immediately adjusts the accrued-leave calculation (Article 99).
         </p>
       </header>
 
@@ -59,6 +62,7 @@ export default async function EditEmployeePage({
             fullName: employee.fullName,
             position: employee.position,
             monthlySalary: employee.monthlySalary,
+            hireDate: formatInTimeZone(employee.hireDate, TZ, "yyyy-MM-dd"),
             defaultScheduleId: employee.defaultScheduleId,
           }}
           schedules={schedules}
