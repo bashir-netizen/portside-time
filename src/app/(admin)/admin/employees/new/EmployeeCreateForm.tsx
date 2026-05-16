@@ -1,22 +1,48 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useActionState } from "react";
 import Link from "next/link";
+import {
+  Save,
+  CalendarDays,
+  Wallet,
+  Briefcase,
+  UserRound,
+  Info,
+  KeyRound,
+  Copy,
+  CheckCircle2,
+} from "lucide-react";
 import { createEmployeeAction } from "../actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Result =
   | { ok: true; id: string; pinPlain: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 
 type Schedule = { id: string; label: string };
+type Template = { id: string; name: string; description: string | null };
 
 export function EmployeeCreateForm({
   schedules,
   defaultScheduleId,
+  templates,
+  defaultTemplateId,
   today,
 }: {
   schedules: Schedule[];
   defaultScheduleId: string;
+  templates: Template[];
+  defaultTemplateId: string; // "" = none selected
   today: string;
 }) {
   const [state, action, pending] = useActionState<Result | null, FormData>(
@@ -24,110 +50,258 @@ export function EmployeeCreateForm({
     null,
   );
 
-  if (state?.ok) {
-    return (
-      <div className="flex flex-col gap-4 rounded-md border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950">
-        <h2 className="text-base font-semibold text-emerald-900 dark:text-emerald-200">
-          Employee created
-        </h2>
-        <p className="text-sm text-emerald-900 dark:text-emerald-200">
-          Their one-time PIN is below. Copy it, write it down, hand it to the
-          employee — it is shown only once.
-        </p>
-        <div className="rounded-md bg-white px-4 py-3 dark:bg-zinc-900">
-          <div className="text-xs text-zinc-500">PIN</div>
-          <div className="font-mono text-3xl tracking-[0.4em]">
-            {state.pinPlain}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href={`/admin/employees/${state.id}`}
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-          >
-            View employee
-          </Link>
-          <Link
-            href="/admin/employees"
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium dark:border-zinc-700"
-          >
-            Back to list
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  if (state?.ok) return <CreatedCard id={state.id} pin={state.pinPlain} />;
+
+  const fieldErrors =
+    state && !state.ok && state.fieldErrors ? state.fieldErrors : undefined;
 
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <Field label="Full name" name="fullName" />
-      <Field label="Position" name="position" />
-      <Field
-        label="Monthly salary (DJF)"
-        name="monthlySalary"
-        type="number"
-        min={0}
-      />
-      <Field
-        label="Hire date"
-        name="hireDate"
-        type="date"
-        defaultValue={today}
-      />
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Default schedule</span>
-        <select
-          name="defaultScheduleId"
-          defaultValue={defaultScheduleId}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+    <form action={action} className="flex flex-col gap-5">
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField
+          label="Full name"
+          name="fullName"
+          icon={UserRound}
+          autoComplete="name"
+          errors={fieldErrors?.fullName}
+        />
+        <FormField
+          label="Position"
+          name="position"
+          icon={Briefcase}
+          placeholder="e.g. Opérateur logistique"
+          errors={fieldErrors?.position}
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField
+          label="Monthly salary (DJF)"
+          name="monthlySalary"
+          type="number"
+          min={0}
+          mono
+          icon={Wallet}
+          placeholder="75000"
+          errors={fieldErrors?.monthlySalary}
+        />
+        <FormField
+          label="Hire date"
+          name="hireDate"
+          type="date"
+          defaultValue={today}
+          mono
+          icon={CalendarDays}
+          hint="Drives Article 99 leave accrual (2.5 days / month)."
+          errors={fieldErrors?.hireDate}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="defaultScheduleTemplateId">
+          Schedule template
+        </Label>
+        <Select
+          name="defaultScheduleTemplateId"
+          defaultValue={defaultTemplateId || "__none__"}
         >
-          {schedules.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      {state && !state.ok && (
-        <p role="alert" className="text-sm text-red-600">
-          {state.error}
+          <SelectTrigger
+            id="defaultScheduleTemplateId"
+            className="bg-card"
+          >
+            <SelectValue placeholder="Pick a template" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">No template (legacy)</SelectItem>
+            {templates.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground">
+          Drives the punch sequence per day-type: split-day (4 punches),
+          continuous-day (4 with on-site lunch), half-day (2), day-off
+          (blocked). Per spec §5.3.
         </p>
-      )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-      >
+        {fieldErrors?.defaultScheduleTemplateId ? (
+          <p className="text-xs text-destructive">
+            {fieldErrors.defaultScheduleTemplateId[0]}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="defaultScheduleId">
+          Legacy schedule (for back-compat)
+        </Label>
+        <Select name="defaultScheduleId" defaultValue={defaultScheduleId}>
+          <SelectTrigger id="defaultScheduleId" className="bg-card">
+            <SelectValue placeholder="Pick a schedule" />
+          </SelectTrigger>
+          <SelectContent>
+            {schedules.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground">
+          Required by the old schema. Will be dropped in a future PR once
+          every employee runs on a template.
+        </p>
+        {fieldErrors?.defaultScheduleId ? (
+          <p className="text-xs text-destructive">
+            {fieldErrors.defaultScheduleId[0]}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex items-start gap-2 rounded-sm border border-[var(--brass)]/30 bg-[var(--brass)]/8 px-3 py-2 text-xs">
+        <Info
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--brass)]"
+          strokeWidth={1.75}
+        />
+        <span className="text-muted-foreground">
+          A 6-digit PIN is generated automatically and shown once after the
+          employee is created. Write it down or copy before dismissing — they
+          need it to punch in.
+        </span>
+      </div>
+
+      {state && !state.ok ? (
+        <div
+          role="alert"
+          className="rounded-sm border border-destructive/40 bg-destructive/8 px-3 py-2 text-sm text-destructive"
+        >
+          {state.error}
+        </div>
+      ) : null}
+
+      <Button type="submit" disabled={pending} className="gap-1.5 self-start">
+        <Save className="h-4 w-4" />
         {pending ? "Creating…" : "Create employee"}
-      </button>
+      </Button>
     </form>
   );
 }
 
-function Field({
+function CreatedCard({ id, pin }: { id: string; pin: string }) {
+  const [copied, setCopied] = useState(false);
+  function copyPin() {
+    navigator.clipboard.writeText(pin);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-start gap-3 rounded-sm border border-[var(--success)]/40 bg-[var(--success)]/8 px-4 py-3">
+        <CheckCircle2
+          className="mt-0.5 h-5 w-5 shrink-0 text-[var(--success)]"
+          strokeWidth={1.75}
+        />
+        <div className="flex flex-col gap-0.5">
+          <p className="font-medium text-foreground">Employee created</p>
+          <p className="text-xs text-muted-foreground">
+            Their one-time PIN is below — shown only once. Write it down or
+            copy now, then hand it to them privately.
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-sm border border-[var(--brass)]/50 bg-[var(--brass)]/10 px-5 py-4">
+        <div className="flex items-center gap-2 text-[var(--brass)]">
+          <KeyRound className="h-3.5 w-3.5" />
+          <span className="label-eyebrow !text-[0.625rem]">PIN · shown once</span>
+        </div>
+        <div className="mt-2 flex items-center gap-3">
+          <span className="font-mono text-3xl font-medium tracking-[0.4em] text-foreground tabular-nums">
+            {pin}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={copyPin}
+            className="gap-1.5"
+          >
+            {copied ? (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)]" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button asChild className="gap-1.5">
+          <Link href={`/admin/employees/${id}`}>View employee</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/admin/employees">Back to list</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function FormField({
   label,
   name,
   type = "text",
   defaultValue,
   min,
+  placeholder,
+  autoComplete,
+  hint,
+  mono = false,
+  icon: Icon,
+  errors,
 }: {
   label: string;
   name: string;
   type?: string;
   defaultValue?: string;
   min?: number;
+  placeholder?: string;
+  autoComplete?: string;
+  hint?: string;
+  mono?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
+  errors?: string[];
 }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-sm font-medium">{label}</span>
-      <input
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={name} className="flex items-center gap-1.5">
+        {Icon ? <Icon className="h-3.5 w-3.5 text-muted-foreground" /> : null}
+        {label}
+      </Label>
+      <Input
+        id={name}
         name={name}
         type={type}
         defaultValue={defaultValue}
         required
+        placeholder={placeholder}
+        autoComplete={autoComplete}
         {...(min !== undefined ? { min } : {})}
-        className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+        className={`bg-card ${mono ? "font-mono tabular-nums" : ""}`}
       />
-    </label>
+      {hint ? (
+        <p className="text-[10px] text-muted-foreground">{hint}</p>
+      ) : null}
+      {errors && errors.length > 0 ? (
+        <p className="text-xs text-destructive">{errors[0]}</p>
+      ) : null}
+    </div>
   );
 }

@@ -8,17 +8,33 @@ import { EmployeeCreateForm } from "./EmployeeCreateForm";
 export const metadata = { title: "New employee — Portside Time" };
 
 export default async function NewEmployeePage() {
-  const schedules = await db.schedule.findMany({
-    select: { id: true, label: true },
-    orderBy: { label: "asc" },
-  });
+  const [schedules, templates] = await Promise.all([
+    db.schedule.findMany({
+      select: { id: true, label: true },
+      orderBy: { label: "asc" },
+    }),
+    db.scheduleTemplate.findMany({
+      select: { id: true, name: true, description: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  // Default the template picker to "Split day (long lunch)" if present —
+  // it's the most common pattern for office staff. Otherwise pick whatever
+  // is first.
+  const preferredTemplate =
+    templates.find((t) => t.name.startsWith("Split day")) ?? templates[0];
 
   return (
     <div className="flex flex-col gap-7">
       <div className="label-eyebrow flex items-center gap-1.5">
-        <Link href="/admin" className="hover:text-foreground">Admin</Link>
+        <Link href="/admin" className="hover:text-foreground">
+          Admin
+        </Link>
         <ChevronRight className="h-3 w-3" aria-hidden />
-        <Link href="/admin/employees" className="hover:text-foreground">Employees</Link>
+        <Link href="/admin/employees" className="hover:text-foreground">
+          Employees
+        </Link>
         <ChevronRight className="h-3 w-3" aria-hidden />
         <span>New</span>
       </div>
@@ -38,6 +54,8 @@ export default async function NewEmployeePage() {
         <EmployeeCreateForm
           schedules={schedules}
           defaultScheduleId={schedules[0]?.id ?? ""}
+          templates={templates}
+          defaultTemplateId={preferredTemplate?.id ?? ""}
           today={todayYmd()}
         />
       </Card>

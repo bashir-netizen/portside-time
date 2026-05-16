@@ -203,7 +203,7 @@ async function ensurePunches() {
   // Iterate each day in the window
   for (
     let d = new Date(windowStart);
-    d.getTime() < windowEnd;
+    d.getTime() < windowEnd.getTime();
     d = new Date(d.getTime() + 24 * 60 * 60 * 1000)
   ) {
     const ymd = ymdInDjibouti(d);
