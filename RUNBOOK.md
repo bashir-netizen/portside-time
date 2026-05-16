@@ -271,6 +271,26 @@ Save. Anything else gets the default block.
 - [ ] Rotate `ADMIN_PASSWORD_BOOTSTRAP` once Bashir has signed in once
   (see "Rotating the admin password" below)
 
+### 13. First admin actions in the app (~10 min)
+
+The production seed creates the admin user, three schedule templates
+(`Standard 08-17` / `Split day (long lunch)` / `Continuous day (on-site lunch)`),
+and the 2026 Djibouti national holidays. No employees are seeded — admins
+add real staff via the UI:
+
+- [ ] `/admin/settings` — confirm `gracePeriodMinutes` (default 15),
+      `justificationWindowHours` (default 48), `annualLeaveAccrualPerMonth`
+      (default 2.5 days/mo per Code du Travail Article 99).
+- [ ] `/admin/employees/new` — create each employee. Required fields:
+      full name, position, monthly salary in DJF, hire date, schedule
+      template. Set initial PIN after creation; share it with the employee
+      verbally/in person.
+- [ ] `/admin/holidays` — verify the 2026 list; correct the lunar (Eid /
+      Mouled / Hégire) dates once the Ministry publishes the official
+      calendar. Each Islamic holiday is seeded as `(estimé)`.
+- [ ] `/admin/devices/register` — register the kiosk / shared device(s)
+      from inside the office.
+
 ---
 
 ## Day-2 operations
@@ -341,6 +361,27 @@ disaster"):
 docker compose run --rm litestream \
     restore -timestamp 2026-05-16T14:30:00Z -o /data/portside.restored.db /data/portside.db
 ```
+
+### Late-incident workflow (spec §5.5 + §5.6)
+
+Every late `shift_in` (past `gracePeriodMinutes` after the scheduled
+start) or early `shift_out` creates a `LateIncident` automatically.
+Lifecycle: `pending_justification` → `submitted` → `justified` /
+`manager_unjustified`. If the employee doesn't submit a reason within
+`justificationWindowHours` (default 48), it auto-flips to
+`auto_unjustified`.
+
+No cron sidecar — the auto-flip runs lazily on every `/admin/late` and
+`/me/justify` page load. Operators should glance at `/admin/late` at
+least once per workday; pending decisions also surface on `/admin`.
+
+**Article 59 al. 9 flag**: 3+ unjustified incidents (rejected or
+auto-unjustified) in any rolling 30-day window flag the employee on
+`/admin/late`. The flag is informational — disciplinary action is the
+admin's call, taken outside the app.
+
+To adjust the grace period or justification window, edit
+`/admin/settings`. Changes apply to incidents created after the save.
 
 ### Rotating the admin password
 
