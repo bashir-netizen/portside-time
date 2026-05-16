@@ -1,0 +1,11 @@
+# Default: let git auto-detect text vs binary, store with LF in the repo.
+* text=auto eol=lf
+
+# Shell scripts MUST be LF — Windows-checked-out CRLF breaks Linux containers
+# (we hit `/usr/bin/env: 'sh\r': No such file or directory` on a Windows clone).
+*.sh text eol=lf
+
+# Native Windows scripts stay CRLF.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf

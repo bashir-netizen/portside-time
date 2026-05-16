@@ -13,7 +13,8 @@ RUN npm ci --no-audit --no-fund
 # ---------- build ----------
 FROM node:${NODE_VERSION} AS build
 WORKDIR /app
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    SKIP_ENV_VALIDATION=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
@@ -33,10 +34,8 @@ RUN groupadd --gid 1001 nodejs && useradd --uid 1001 --gid nodejs --shell /bin/b
 
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
-COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/src/generated ./src/generated
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=build /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=build /app/node_modules/@node-rs ./node_modules/@node-rs
