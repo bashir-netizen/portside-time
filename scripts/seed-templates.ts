@@ -1,4 +1,6 @@
-// One-off: seed the Fathi + Hawa schedule templates per spec §5.3.
+// One-off: seed the two production day-pattern templates per spec §5.3.
+// Naming is intentionally generic (split-day vs continuous-day) — Fathi and
+// Hawa are real employees and their names don't belong on schedules.
 // Idempotent — safe to re-run.
 import { db } from "../src/lib/db";
 
@@ -13,9 +15,10 @@ type DP = {
   lunchOnSite?: boolean;
 };
 
-// Pattern A — "Fathi pattern" (split-day, lunch off-site)
-// Sun..Thu split day, Fri off, Sat half day
-const FATHI: DP[] = [
+// Template A — "Split day (long lunch)"
+// Sun–Thu split with off-site midday break; Fri off; Sat half-day.
+// On busy days, employee stays on-site for lunch — per diem owed.
+const SPLIT_DAY_LONG_LUNCH: DP[] = [
   { dayOfWeek: 0, type: "split_day", startTime: "08:30", endTime: "18:30", lunchOutTime: "12:00", lunchInTime: "16:15" }, // Sun
   { dayOfWeek: 1, type: "split_day", startTime: "08:30", endTime: "18:30", lunchOutTime: "12:00", lunchInTime: "16:15" }, // Mon
   { dayOfWeek: 2, type: "split_day", startTime: "08:30", endTime: "18:30", lunchOutTime: "12:00", lunchInTime: "16:15" }, // Tue
@@ -25,9 +28,10 @@ const FATHI: DP[] = [
   { dayOfWeek: 6, type: "half_day", startTime: "08:30", endTime: "12:00" }, // Sat
 ];
 
-// Pattern B — "Hawa pattern" (continuous-day with on-site lunch, busy-day extension)
-// Sun..Wed continuous day (lunch on site, 75 min), Thu half day, Fri off, Sat split day
-const HAWA: DP[] = [
+// Template B — "Continuous day (on-site lunch)"
+// Sun–Wed continuous with 75-min on-site lunch; Thu half-day; Fri off;
+// Sat split-day. Busy days extend end to 18:30 — per diem owed.
+const CONTINUOUS_DAY: DP[] = [
   { dayOfWeek: 0, type: "continuous_day", startTime: "08:30", endTime: "15:30", lunchBreakMinutes: 75, lunchOnSite: true }, // Sun
   { dayOfWeek: 1, type: "continuous_day", startTime: "08:30", endTime: "15:30", lunchBreakMinutes: 75, lunchOnSite: true }, // Mon
   { dayOfWeek: 2, type: "continuous_day", startTime: "08:30", endTime: "15:30", lunchBreakMinutes: 75, lunchOnSite: true }, // Tue
@@ -95,18 +99,18 @@ async function upsertTemplate(
 
 async function main() {
   await upsertTemplate(
-    "Fathi pattern",
-    "Split day with off-site lunch. Sun–Thu shift, Fri off, Sat half day. ~32h15/week.",
-    false,
-    null,
-    FATHI,
-  );
-  await upsertTemplate(
-    "Hawa pattern",
-    "Continuous day with on-site lunch. Sun–Wed continuous, Thu half day, Fri off, Sat split day. Busy days extend to 18h30. ~32h15/week.",
+    "Split day (long lunch)",
+    "Sun–Thu 08:30 → 12:00, then 16:15 → 18:30 (off-site lunch). Fri off. Sat half-day 08:30–12:00. ~32h15/week. On busy days, employees stay on-site for lunch — per diem owed.",
     true,
     "18:30",
-    HAWA,
+    SPLIT_DAY_LONG_LUNCH,
+  );
+  await upsertTemplate(
+    "Continuous day (on-site lunch)",
+    "Sun–Wed 08:30 → 15:30 with 75-min on-site lunch. Thu half-day 08:30–12:00. Fri off. Sat split-day. ~32h15/week. Busy days extend end to 18:30 — per diem owed.",
+    true,
+    "18:30",
+    CONTINUOUS_DAY,
   );
   console.log("\nDone.");
   process.exit(0);

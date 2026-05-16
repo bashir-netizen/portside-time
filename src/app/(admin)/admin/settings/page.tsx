@@ -126,13 +126,13 @@ export default function SettingsPage() {
       <Section
         eyebrow="Schedule design"
         title="Schedule templates"
-        description="Per-employee day-by-day shift patterns. Spec defines Fathi (split-day, lunch off-site) and Hawa (continuous, lunch on-site)."
+        description="Per-employee day-by-day shift patterns. Two production templates: Split day (long lunch, off-site by default; on-site on busy days) and Continuous day (on-site lunch, busy day extends to 18:30)."
       >
         <CardLink
           href="/admin/schedules"
           icon={CalendarClock}
           title="Manage schedule templates"
-          subtitle="Currently 1 template seeded · Fathi + Hawa patterns ship in PR-3"
+          subtitle="Split-day + Continuous-day templates seeded; day-pattern-aware punch flow active"
         />
       </Section>
 

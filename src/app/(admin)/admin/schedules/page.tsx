@@ -78,9 +78,9 @@ export default async function SchedulesPage() {
         </div>
         <p className="text-xs text-muted-foreground">
           Per spec §5.3 — defines a 7-day pattern with different day types
-          (split-day, continuous-day, half-day, day-off). Assigning these to
-          employees + branching the punch flow on day type ships in the next
-          PR. For now, view the seeded Fathi + Hawa patterns below.
+          (split-day, continuous-day, half-day, day-off). Assign one to each
+          employee from <span className="font-mono">/admin/employees/&lt;id&gt;/edit</span>;
+          the punch flow then branches on today's day-pattern type.
         </p>
 
         <div className="grid gap-3 md:grid-cols-2">
