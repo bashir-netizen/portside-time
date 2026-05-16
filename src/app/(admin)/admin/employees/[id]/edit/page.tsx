@@ -1,7 +1,12 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { db } from "@/lib/db";
+import { Card } from "@/components/ui/card";
 import { updateEmployeeAction } from "../../actions";
 import { EmployeeEditForm } from "./EmployeeEditForm";
+
+export const metadata = { title: "Edit employee — Portside Time" };
 
 export default async function EditEmployeePage({
   params,
@@ -21,18 +26,45 @@ export default async function EditEmployeePage({
   const bound = updateEmployeeAction.bind(null, employee.id);
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">Edit {employee.fullName}</h1>
-      <EmployeeEditForm
-        initial={{
-          fullName: employee.fullName,
-          position: employee.position,
-          monthlySalary: employee.monthlySalary,
-          defaultScheduleId: employee.defaultScheduleId,
-        }}
-        schedules={schedules}
-        action={bound}
-      />
+    <div className="flex flex-col gap-7">
+      <div className="label-eyebrow flex items-center gap-1.5">
+        <Link href="/admin" className="hover:text-foreground">Admin</Link>
+        <ChevronRight className="h-3 w-3" aria-hidden />
+        <Link href="/admin/employees" className="hover:text-foreground">Employees</Link>
+        <ChevronRight className="h-3 w-3" aria-hidden />
+        <Link
+          href={`/admin/employees/${employee.id}`}
+          className="hover:text-foreground"
+        >
+          {employee.fullName}
+        </Link>
+        <ChevronRight className="h-3 w-3" aria-hidden />
+        <span>Edit</span>
+      </div>
+
+      <header>
+        <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+          Edit {employee.fullName}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Hire date is fixed once the employee exists (audit-logged change
+          flow ships in a later PR). Changing the schedule rebases future
+          shift expectations.
+        </p>
+      </header>
+
+      <Card className="bg-card p-5 md:p-6">
+        <EmployeeEditForm
+          initial={{
+            fullName: employee.fullName,
+            position: employee.position,
+            monthlySalary: employee.monthlySalary,
+            defaultScheduleId: employee.defaultScheduleId,
+          }}
+          schedules={schedules}
+          action={bound}
+        />
+      </Card>
     </div>
   );
 }
