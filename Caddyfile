@@ -1,12 +1,38 @@
+# Caddy runs as an internal HTTP-only router behind cloudflared.
+# TLS terminates at the Cloudflare edge; Caddy never sees TLS.
+# The :8080 port is bound to 127.0.0.1 on the host (see docker-compose.yml),
+# so the only thing that can reach it is the cloudflared systemd service
+# also running on the host.
+#
+# auto_https off because there's nothing to issue certs for.
+
 {
-  email bashir@portside-logistics.com
+    auto_https off
+    admin off
 }
 
-time.portside.dj {
-  encode zstd gzip
-  reverse_proxy app:3000 {
-    header_up X-Real-IP {remote_host}
-    header_up X-Forwarded-For {remote_host}
-    header_up X-Forwarded-Proto {scheme}
-  }
+:8080 {
+    encode zstd gzip
+
+    @time host time.portsideshift.com
+    handle @time {
+        reverse_proxy app:3000 {
+            header_up X-Real-IP {http.request.header.Cf-Connecting-Ip}
+            header_up X-Forwarded-For {http.request.header.Cf-Connecting-Ip}
+            header_up X-Forwarded-Proto https
+        }
+    }
+
+    # Multi-app pattern — uncomment when adding a second app to this server:
+    # @clean host clean.portsideshift.com
+    # handle @clean {
+    #     reverse_proxy fortis-clean:3000 {
+    #         header_up X-Real-IP {http.request.header.Cf-Connecting-Ip}
+    #         header_up X-Forwarded-For {http.request.header.Cf-Connecting-Ip}
+    #         header_up X-Forwarded-Proto https
+    #     }
+    # }
+
+    # Unmatched hosts: 421 Misdirected so cloudflared doesn't silently retry.
+    respond 421
 }

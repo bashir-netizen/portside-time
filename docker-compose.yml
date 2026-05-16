@@ -2,9 +2,7 @@ name: portside-time
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/bashir-netizen/portside-time:latest
     env_file:
       - /etc/portside/time.env
     environment:
@@ -22,48 +20,35 @@ services:
     networks:
       - portside
 
-  backup:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  # Continuous SQLite replication to Cloudflare R2.
+  # Replaces the previous cron-style backup container. See litestream.yml
+  # at the repo root for replication config.
+  litestream:
+    image: litestream/litestream:0.3
     env_file:
       - /etc/portside/time.env
-    environment:
-      NODE_ENV: production
-      DB_PATH: /data/portside.db
-      BACKUP_WORK_DIR: /tmp
     volumes:
-      - /srv/portside/data:/data:ro
+      - /srv/portside/data:/data
+      - ./litestream.yml:/etc/litestream.yml:ro
+    command: ["replicate"]
+    depends_on:
+      app:
+        condition: service_healthy
     restart: unless-stopped
-    # Daily at 02:00 Africa/Djibouti = 23:00 UTC the day before.
-    # Sleep-until-the-clock approach: simpler than a real cron container.
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        while true; do
-          now=$$(date -u +%H%M)
-          # Trigger at 23:00 UTC
-          if [ "$$now" = "2300" ]; then
-            node node_modules/.bin/tsx scripts/backup.ts || echo "[backup] errored"
-            sleep 3600
-          else
-            sleep 50
-          fi
-        done
     networks:
       - portside
 
+  # Internal HTTP router. Plain HTTP on :8080, bound to the host's loopback
+  # so only cloudflared (running on the host as a systemd service) can reach
+  # it. TLS terminates at Cloudflare's edge.
   caddy:
     image: caddy:2-alpine
     depends_on:
       app:
         condition: service_healthy
     ports:
-      - "80:80"
-      - "443:443"
+      - "127.0.0.1:8080:8080"
     volumes:
-      - /srv/portside/caddy:/data
-      - /srv/portside/caddy-config:/config
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     restart: unless-stopped
     networks:
