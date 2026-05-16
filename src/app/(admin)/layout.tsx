@@ -1,18 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Anchor } from "lucide-react";
 import { readSession } from "@/lib/auth/session";
 import { logoutAction } from "@/app/login/actions";
 import { db } from "@/lib/db";
 import { formatDateTime } from "@/lib/time";
-
-const NAV = [
-  { href: "/admin", label: "Home", emoji: "🏠" },
-  { href: "/admin/employees", label: "Staff", emoji: "👥" },
-  { href: "/admin/punches", label: "Punches", emoji: "⏱️" },
-  { href: "/admin/leave", label: "Leave", emoji: "📅" },
-  { href: "/admin/reports", label: "Reports", emoji: "📊" },
-  { href: "/admin/more", label: "More", emoji: "···" },
-];
+import { SidebarNav } from "@/components/admin/sidebar-nav";
+import { MobileBottomNav, MobileTopMenuButton } from "@/components/admin/mobile-nav";
+import { UserMenu } from "@/components/admin/user-menu";
 
 export default async function AdminLayout({
   children,
@@ -27,79 +22,135 @@ export default async function AdminLayout({
     ? await db.user.findUnique({ where: { id: session.userId } })
     : null;
 
-  // New-IP banner: open PendingIp rows whose tokens haven't expired.
   const pending = await db.pendingIp.findMany({
     where: { status: "open" },
     orderBy: { lastSeenAt: "desc" },
     take: 5,
   });
 
+  // Today's date for the top bar — French long form, since the user reads
+  // French in the office. The locale switcher will let an English admin flip.
+  const todayLabel = new Intl.DateTimeFormat("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Africa/Djibouti",
+  }).format(new Date());
+
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
-        <Link href="/admin" className="text-sm font-semibold tracking-tight">
-          Portside Time · Admin
-        </Link>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="text-xs text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400"
-            aria-label={`Sign out (${adminUser?.email ?? "admin"})`}
+    <div className="min-h-screen lg:grid lg:grid-cols-[16rem_1fr] lg:grid-rows-[auto_1fr]">
+      {/* Desktop sidebar */}
+      <aside className="hidden border-r border-sidebar-border bg-sidebar lg:row-span-2 lg:flex lg:flex-col">
+        <Link
+          href="/admin"
+          className="group flex items-center gap-2.5 border-b border-sidebar-border px-5 py-5"
+          aria-label="Portside Time — Admin home"
+        >
+          <span
+            aria-hidden
+            className="flex h-9 w-9 items-center justify-center rounded-sm bg-[var(--foreground)] text-[var(--background)] ring-1 ring-[var(--brass)]/40"
           >
-            Sign out
-          </button>
-        </form>
+            <Anchor className="h-4 w-4" strokeWidth={2} />
+          </span>
+          <span className="flex flex-col leading-tight">
+            <span className="font-display text-lg tracking-tight">
+              Portside Time
+            </span>
+            <span className="label-eyebrow !text-[0.625rem]">
+              Admin · Djibouti
+            </span>
+          </span>
+        </Link>
+
+        <div className="flex-1 overflow-y-auto py-5">
+          <SidebarNav />
+        </div>
+
+        {/* Footer ledger mark */}
+        <div className="border-t border-sidebar-border px-5 py-3 text-[0.625rem] font-mono uppercase tracking-[0.18em] text-sidebar-foreground/55">
+          <div>portside logistics</div>
+          <div className="text-sidebar-foreground/40">manifest v1 · 2026</div>
+        </div>
+      </aside>
+
+      {/* Top bar */}
+      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-3 py-2.5 backdrop-blur lg:col-start-2 lg:px-6">
+        <MobileTopMenuButton />
+
+        <Link
+          href="/admin"
+          className="flex items-center gap-2 lg:hidden"
+          aria-label="Portside Time"
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-foreground text-background">
+            <Anchor className="h-3.5 w-3.5" strokeWidth={2} />
+          </span>
+          <span className="font-display text-base tracking-tight">
+            Portside Time
+          </span>
+        </Link>
+
+        <div className="hidden flex-col leading-tight md:flex">
+          <span className="label-eyebrow">Today</span>
+          <time className="font-mono text-xs text-foreground/80">
+            {todayLabel}
+          </time>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          {adminUser?.email ? (
+            <UserMenu email={adminUser.email} logoutAction={logoutAction} />
+          ) : (
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="text-xs text-muted-foreground hover:underline"
+              >
+                Sign out
+              </button>
+            </form>
+          )}
+        </div>
       </header>
 
-      {pending.length > 0 && (
+      {/* Pending-IP warning band — sits between top bar and content */}
+      {pending.length > 0 ? (
         <div
           role="status"
           aria-live="polite"
-          className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100"
+          className="border-b border-[var(--warning)]/40 bg-[var(--warning)]/10 px-3 py-3 text-sm text-foreground lg:col-start-2 lg:px-6"
         >
-          <div className="mx-auto flex max-w-3xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <strong>{pending.length}</strong> pending IP approval
-              {pending.length > 1 ? "s" : ""}
-              {" — "}
-              <span className="font-mono">{pending[0]!.ipAddress}</span> first
-              seen {formatDateTime(pending[0]!.firstSeenAt)}
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-2">
+              <span
+                aria-hidden
+                className="mt-1 inline-block h-2 w-2 rounded-full bg-[var(--warning)]"
+              />
+              <span>
+                <strong className="font-medium">{pending.length}</strong>{" "}
+                pending IP approval{pending.length > 1 ? "s" : ""}
+                {" — "}
+                <span className="font-mono">{pending[0]!.ipAddress}</span> first
+                seen {formatDateTime(pending[0]!.firstSeenAt)}
+              </span>
             </div>
             <Link
               href="/admin/ip-allowlist"
-              className="self-start rounded-md bg-amber-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-amber-200 dark:text-amber-950"
+              className="self-start rounded-sm bg-foreground px-3 py-1.5 text-xs font-medium text-background hover:bg-foreground/85"
             >
               Review
             </Link>
           </div>
         </div>
-      )}
+      ) : null}
 
-      <main className="flex-1 px-4 py-6 pb-24 md:pb-6">
-        <div className="mx-auto w-full max-w-5xl">{children}</div>
+      {/* Main content area */}
+      <main className="px-3 py-6 pb-24 md:px-6 lg:col-start-2 lg:pb-12">
+        <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
 
-      <nav
-        className="fixed bottom-0 left-0 right-0 border-t border-zinc-200 bg-white px-2 py-2 md:hidden dark:border-zinc-800 dark:bg-zinc-950"
-        aria-label="Primary"
-      >
-        <ul className="flex justify-around">
-          {NAV.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                prefetch={false}
-                className="flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-400"
-              >
-                <span className="text-base" aria-hidden>
-                  {item.emoji}
-                </span>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <MobileBottomNav />
     </div>
   );
 }

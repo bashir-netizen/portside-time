@@ -1,24 +1,303 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Portside Time — Industrial Maritime palette
+ *
+ * Light mode = parchment ledger. Warm cream paper, deep navy ink, brass accent,
+ * sea-green for success, rust for alerts. Inspired by shipping logs, port
+ * manifests, brass nautical instruments.
+ *
+ * Dark mode = harbour at night. Deep navy ground, brass primary, cream ink.
+ *
+ * Font system (loaded via next/font in src/app/layout.tsx):
+ *  - Display:  Fraunces (variable; opsz + SOFT axes) — page titles, hero numbers
+ *  - Body:     Public Sans (humanist sans) — all UI body copy
+ *  - Mono:     IBM Plex Mono — timestamps, IDs, tabular numerics
+ */
 
 @theme inline {
+  /* Surface tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Semantic extras */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-brass: var(--brass);
+
+  /* Fonts — literal names (per next/font + Tailwind v4 gotcha) */
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Radii — keep small/sharp for the ledger feel; not pillowy */
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* PARCHMENT LEDGER (light) */
+
+  /* Warm cream parchment */
+  --background: oklch(0.955 0.018 84);
+  /* Deep navy ink */
+  --foreground: oklch(0.22 0.04 248);
+
+  /* Lifted card surface — slightly creamier than ground */
+  --card: oklch(0.975 0.014 86);
+  --card-foreground: oklch(0.22 0.04 248);
+
+  --popover: oklch(0.985 0.012 86);
+  --popover-foreground: oklch(0.22 0.04 248);
+
+  /* Primary = the ink itself — high-contrast dark navy */
+  --primary: oklch(0.22 0.04 248);
+  --primary-foreground: oklch(0.965 0.016 84);
+
+  /* Secondary = aged paper surface */
+  --secondary: oklch(0.91 0.028 84);
+  --secondary-foreground: oklch(0.22 0.04 248);
+
+  --muted: oklch(0.92 0.024 84);
+  --muted-foreground: oklch(0.46 0.03 248);
+
+  /* Accent = brass / port-side copper */
+  --accent: oklch(0.62 0.105 72);
+  --accent-foreground: oklch(0.965 0.016 84);
+
+  /* Brass (semantic alias, same hue, slightly stronger) */
+  --brass: oklch(0.58 0.115 70);
+
+  /* Sea green = success / approved */
+  --success: oklch(0.46 0.07 168);
+  --success-foreground: oklch(0.965 0.016 84);
+
+  /* Amber maritime caution */
+  --warning: oklch(0.72 0.13 70);
+  --warning-foreground: oklch(0.22 0.04 248);
+
+  /* Signal red = destructive / unjustified / faute lourde */
+  --destructive: oklch(0.51 0.16 28);
+
+  --border: oklch(0.82 0.04 82);
+  --input: oklch(0.86 0.03 82);
+  --ring: oklch(0.58 0.115 70);
+
+  /* Charts — desaturated maritime palette for data viz */
+  --chart-1: oklch(0.22 0.04 248);          /* navy */
+  --chart-2: oklch(0.58 0.115 70);          /* brass */
+  --chart-3: oklch(0.46 0.07 168);          /* sea green */
+  --chart-4: oklch(0.51 0.16 28);           /* rust */
+  --chart-5: oklch(0.55 0.04 248);          /* slate */
+
+  /* Sidebar — slightly darker than ground so it visually anchors */
+  --sidebar: oklch(0.91 0.028 84);
+  --sidebar-foreground: oklch(0.22 0.04 248);
+  --sidebar-primary: oklch(0.58 0.115 70);
+  --sidebar-primary-foreground: oklch(0.965 0.016 84);
+  --sidebar-accent: oklch(0.86 0.038 84);
+  --sidebar-accent-foreground: oklch(0.22 0.04 248);
+  --sidebar-border: oklch(0.78 0.04 80);
+  --sidebar-ring: oklch(0.58 0.115 70);
+
+  --radius: 0.375rem;
+}
+
+.dark {
+  /* HARBOUR AT NIGHT (dark) */
+
+  --background: oklch(0.19 0.038 250);
+  --foreground: oklch(0.94 0.02 84);
+
+  --card: oklch(0.23 0.04 250);
+  --card-foreground: oklch(0.94 0.02 84);
+
+  --popover: oklch(0.24 0.04 250);
+  --popover-foreground: oklch(0.94 0.02 84);
+
+  --primary: oklch(0.72 0.12 74);
+  --primary-foreground: oklch(0.19 0.038 250);
+
+  --secondary: oklch(0.28 0.035 250);
+  --secondary-foreground: oklch(0.94 0.02 84);
+
+  --muted: oklch(0.27 0.034 250);
+  --muted-foreground: oklch(0.72 0.022 80);
+
+  --accent: oklch(0.72 0.12 74);
+  --accent-foreground: oklch(0.19 0.038 250);
+
+  --brass: oklch(0.78 0.12 75);
+
+  --success: oklch(0.62 0.10 168);
+  --success-foreground: oklch(0.19 0.038 250);
+
+  --warning: oklch(0.78 0.14 75);
+  --warning-foreground: oklch(0.19 0.038 250);
+
+  --destructive: oklch(0.62 0.16 28);
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.72 0.12 74);
+
+  --chart-1: oklch(0.72 0.12 74);
+  --chart-2: oklch(0.62 0.10 168);
+  --chart-3: oklch(0.62 0.16 28);
+  --chart-4: oklch(0.78 0.04 250);
+  --chart-5: oklch(0.55 0.038 250);
+
+  --sidebar: oklch(0.16 0.034 250);
+  --sidebar-foreground: oklch(0.94 0.02 84);
+  --sidebar-primary: oklch(0.72 0.12 74);
+  --sidebar-primary-foreground: oklch(0.19 0.038 250);
+  --sidebar-accent: oklch(0.27 0.034 250);
+  --sidebar-accent-foreground: oklch(0.94 0.02 84);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.72 0.12 74);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    /* Subtle paper grain (light mode) */
+    background-image:
+      radial-gradient(
+        circle at 20% 30%,
+        oklch(0.99 0.02 84 / 0.5) 0%,
+        transparent 30%
+      ),
+      radial-gradient(
+        circle at 80% 70%,
+        oklch(0.88 0.04 80 / 0.25) 0%,
+        transparent 35%
+      );
+    /* Tabular figures everywhere — ledger feel */
+    font-feature-settings: "tnum" 1, "lnum" 1, "ss01" 1;
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(
+        circle at 20% 30%,
+        oklch(0.25 0.05 250 / 0.6) 0%,
+        transparent 35%
+      ),
+      radial-gradient(
+        circle at 85% 80%,
+        oklch(0.16 0.034 250 / 0.8) 0%,
+        transparent 40%
+      );
+  }
+
+  /* Headings use display serif by default */
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+    font-feature-settings: "ss01" 1, "ss02" 1, "lnum" 1;
+  }
+
+  /* Mono numerals look like an old-school manifest */
+  code, kbd, samp, pre, .mono {
+    @apply font-mono;
+    font-feature-settings: "ss02" 1, "zero" 1;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+@layer utilities {
+  /* Small caps section labels (ledger style) */
+  .label-eyebrow {
+    @apply font-mono uppercase tracking-[0.18em] text-[0.6875rem] text-muted-foreground;
+  }
+
+  /* Double horizontal rule — section divider used between page bands */
+  .rule-double {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    height: 0.375rem;
+    background: transparent;
+  }
+
+  /* Decorative corner brackets — wraps any element to feel like a port permit */
+  .frame-permit {
+    position: relative;
+  }
+  .frame-permit::before,
+  .frame-permit::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--brass);
+    pointer-events: none;
+  }
+  .frame-permit::before {
+    top: -2px;
+    left: -2px;
+    border-right: 0;
+    border-bottom: 0;
+  }
+  .frame-permit::after {
+    bottom: -2px;
+    right: -2px;
+    border-left: 0;
+    border-top: 0;
+  }
+
+  /* Brass underline accent — for hovered nav items / section eyebrows */
+  .underline-brass {
+    background-image: linear-gradient(
+      to right,
+      var(--brass) 0%,
+      var(--brass) 100%
+    );
+    background-size: 100% 1.5px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+  }
 }

@@ -110,6 +110,14 @@ export async function employeeLoginAction(
   const headerList = await headers();
   const ip = resolveClientIp(headerList);
 
+  // Dev-only bypass of office-only gates (IP allowlist + approved device).
+  // Lets a local browser sign in as employee without being on the office
+  // network or having a registered device. ALWAYS off in production: the
+  // NODE_ENV check is the hard gate; the env var is just the opt-in.
+  const devBypassGates =
+    process.env.NODE_ENV !== "production" &&
+    process.env.DEV_BYPASS_OFFICE_GATES === "1";
+
   const ipRate = checkIpRate(ip);
   if (!ipRate.allowed) {
     return {
@@ -128,8 +136,14 @@ export async function employeeLoginAction(
   }
 
   // Office-only gate: IP allowlist
-  const activeIps = await db.ipAllowlist.findMany({ where: { active: true } });
-  const ipAllowed = ip ? activeIps.some((r) => r.ipAddress === ip) : false;
+  const activeIps = devBypassGates
+    ? []
+    : await db.ipAllowlist.findMany({ where: { active: true } });
+  const ipAllowed = devBypassGates
+    ? true
+    : ip
+      ? activeIps.some((r) => r.ipAddress === ip)
+      : false;
   if (!ipAllowed) {
     await audit({
       actor: { type: "system" },
@@ -152,20 +166,24 @@ export async function employeeLoginAction(
   }
 
   // Office-only gate: approved device
-  const cookie = await readDeviceCookie();
-  const device = await checkDevice({ deviceId: cookie?.deviceId });
-  if (!device.ok) {
-    await audit({
-      actor: { type: "system" },
-      action: "employee_login_blocked",
-      entityType: "employee",
-      entityId: parsed.data.employeeId,
-      sourceIp: ip,
-      deviceId: cookie?.deviceId,
-      userAgent: headerList.get("user-agent"),
-      checkFailed: "device",
-    });
-    return { ok: false, error: "Access denied." };
+  let deviceIdForSession: string | null = null;
+  if (!devBypassGates) {
+    const cookie = await readDeviceCookie();
+    const device = await checkDevice({ deviceId: cookie?.deviceId });
+    if (!device.ok) {
+      await audit({
+        actor: { type: "system" },
+        action: "employee_login_blocked",
+        entityType: "employee",
+        entityId: parsed.data.employeeId,
+        sourceIp: ip,
+        deviceId: cookie?.deviceId,
+        userAgent: headerList.get("user-agent"),
+        checkFailed: "device",
+      });
+      return { ok: false, error: "Access denied." };
+    }
+    deviceIdForSession = device.device.id;
   }
 
   const employee = await db.employee.findUnique({
@@ -182,7 +200,7 @@ export async function employeeLoginAction(
       entityType: "employee",
       entityId: employee.id,
       sourceIp: ip,
-      deviceId: device.device.id,
+      deviceId: deviceIdForSession ?? undefined,
     });
     return { ok: false, error: "Invalid PIN." };
   }
@@ -190,7 +208,7 @@ export async function employeeLoginAction(
   await createSession({
     role: "employee",
     employeeId: employee.id,
-    deviceId: device.device.id,
+    deviceId: deviceIdForSession,
     sourceIp: ip,
   });
   await audit({
@@ -199,7 +217,7 @@ export async function employeeLoginAction(
     entityType: "employee",
     entityId: employee.id,
     sourceIp: ip,
-    deviceId: device.device.id,
+    deviceId: deviceIdForSession ?? undefined,
   });
 
   redirect("/me");
