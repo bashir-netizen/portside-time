@@ -1,0 +1,27 @@
+# Litestream continuous replication for the SQLite DB.
+#
+# Reads DB at /data/portside.db (mounted volume) and streams WAL frames to
+# Cloudflare R2. Restores via `litestream restore` from any later point.
+#
+# All credentials come from /etc/portside/time.env via the docker-compose
+# env_file. Required vars:
+#   R2_ENDPOINT          e.g. https://<account_id>.r2.cloudflarestorage.com
+#   R2_ACCESS_KEY_ID     R2 API token access key
+#   R2_SECRET_ACCESS_KEY R2 API token secret
+#
+# See RUNBOOK.md for the tested restore procedure.
+
+dbs:
+  - path: /data/portside.db
+    replicas:
+      - type: s3
+        endpoint: ${R2_ENDPOINT}
+        bucket: portside-backups
+        path: time
+        region: auto
+        access-key-id: ${R2_ACCESS_KEY_ID}
+        secret-access-key: ${R2_SECRET_ACCESS_KEY}
+        force-path-style: true
+        retention: 720h           # keep 30 days of snapshots
+        snapshot-interval: 24h    # one full snapshot per day
+        sync-interval: 1s         # WAL frames stream within a second

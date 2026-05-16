@@ -31,7 +31,12 @@ const EnvSchema = z.object({
     .transform((v) => v === "true"),
 });
 
-const parsed = EnvSchema.safeParse(process.env);
+// SKIP_ENV_VALIDATION=1 lets `next build` succeed in CI without the runtime
+// secrets present. The values exported in that mode are never reached at
+// request time — runtime always has the real env via Docker compose env_file.
+const skip = process.env.SKIP_ENV_VALIDATION === "1";
+
+const parsed = EnvSchema.safeParse(skip ? buildPlaceholders() : process.env);
 
 if (!parsed.success) {
   console.error("Invalid environment configuration:");
@@ -42,3 +47,20 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+function buildPlaceholders(): Record<string, string> {
+  const hex64 = "0".repeat(64);
+  return {
+    NODE_ENV: "production",
+    APP_DOMAIN: "build.local",
+    APP_URL: "https://build.local",
+    DATABASE_URL: "file:/tmp/build.db",
+    SESSION_SECRET: hex64,
+    DEVICE_COOKIE_SECRET: hex64,
+    FINGERPRINT_SECRET: hex64,
+    APPROVAL_TOKEN_SECRET: hex64,
+    ADMIN_EMAIL: "build@build.local",
+    ADMIN_PASSWORD_BOOTSTRAP: "buildbuild",
+    ADMIN_ALERT_EMAIL: "build@build.local",
+  };
+}
