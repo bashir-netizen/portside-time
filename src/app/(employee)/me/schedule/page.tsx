@@ -10,13 +10,19 @@ import {
 } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { addDays, startOfWeek } from "date-fns";
+import { getLocale, getTranslations } from "next-intl/server";
 import { readSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { dateLocaleFor } from "@/i18n/date";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Schedule — Portside Time" };
+export async function generateMetadata() {
+  const t = await getTranslations("schedule");
+  const tCommon = await getTranslations("common");
+  return { title: `${t("title")} — ${tCommon("appName")}` };
+}
 
 const TZ = "Africa/Djibouti";
 
@@ -70,12 +76,20 @@ export default async function SchedulePage() {
     actualByDay.set(ymd, existing);
   }
 
-  const templateLabel =
-    employee.defaultScheduleTemplate?.name ?? "Unassigned";
-  const weekRangeLabel = `${formatInTimeZone(weekStart, TZ, "d MMM")} – ${formatInTimeZone(
+  const [t, tCommon, tMe, locale] = await Promise.all([
+    getTranslations("schedule"),
+    getTranslations("common"),
+    getTranslations("me"),
+    getLocale(),
+  ]);
+  const dateLocale = dateLocaleFor(locale as "fr" | "en");
+
+  const templateLabel = employee.defaultScheduleTemplate?.name ?? "—";
+  const weekRangeLabel = `${formatInTimeZone(weekStart, TZ, "d MMM", { locale: dateLocale })} – ${formatInTimeZone(
     addDays(weekStart, 6),
     TZ,
-    "d MMM yyyy"
+    "d MMM yyyy",
+    { locale: dateLocale }
   )}`;
 
   return (
@@ -83,15 +97,15 @@ export default async function SchedulePage() {
       <header className="flex flex-col gap-1">
         <div className="label-eyebrow flex items-center gap-1.5">
           <Link href="/me" className="hover:text-foreground">
-            Today
+            {tCommon("today")}
           </Link>
           <ChevronRight className="h-3 w-3" aria-hidden />
-          <span>Schedule</span>
+          <span>{t("title")}</span>
         </div>
         <div className="flex items-end justify-between gap-3">
           <div>
             <h1 className="font-display text-3xl tracking-tight md:text-4xl">
-              This week
+              {t("thisWeek")}
             </h1>
             <p className="mt-1 font-mono text-xs text-muted-foreground tabular-nums">
               {weekRangeLabel} · {templateLabel}
@@ -135,7 +149,7 @@ export default async function SchedulePage() {
                         isToday && "text-[var(--brass)]"
                       )}
                     >
-                      {formatInTimeZone(day, TZ, "EEE")}
+                      {formatInTimeZone(day, TZ, "EEE", { locale: dateLocale })}
                     </span>
                     <span className="font-display text-xl tabular-nums">
                       {formatInTimeZone(day, TZ, "d")}
@@ -143,12 +157,25 @@ export default async function SchedulePage() {
                   </div>
                   {isToday ? (
                     <Badge className="border-[var(--brass)]/30 bg-[var(--brass)]/15 px-1.5 py-0 text-[9px] font-mono uppercase tracking-wider text-[var(--brass)] hover:bg-[var(--brass)]/15">
-                      Today
+                      {t("todayBadge")}
                     </Badge>
                   ) : null}
                 </header>
 
-                <DayBody pattern={pattern} actuals={actuals} />
+                <DayBody
+                  pattern={pattern}
+                  actuals={actuals}
+                  labels={{
+                    dayOff: tMe("status.dayOff"),
+                    start: tMe("scheduleStart"),
+                    end: tMe("scheduleEnd"),
+                    lunchOut: tMe("scheduleLunchOut"),
+                    lunchIn: tMe("scheduleLunchIn"),
+                    back: t("back"),
+                    lunchOnSiteWithMins: (m: number | null) =>
+                      m ? tMe("scheduleLunchOnSiteWithMins", { minutes: m }) : tMe("scheduleLunchOnSite"),
+                  }}
+                />
               </Card>
             );
           })}
@@ -157,18 +184,29 @@ export default async function SchedulePage() {
 
       {!employee.defaultScheduleTemplate ? (
         <div className="rounded-sm border border-dashed border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-          This employee has no day-pattern template assigned. Showing default
-          split-day pattern. Admin can assign a template at{" "}
-          <span className="font-mono">/admin/employees/&lt;id&gt;/edit</span>.
+          {t("noTemplateAdminHint", {
+            path: "/admin/employees/<id>/edit",
+          })}
         </div>
       ) : null}
     </div>
   );
 }
 
+type DayLabels = {
+  dayOff: string;
+  start: string;
+  end: string;
+  lunchOut: string;
+  lunchIn: string;
+  back: string;
+  lunchOnSiteWithMins: (minutes: number | null) => string;
+};
+
 function DayBody({
   pattern,
   actuals,
+  labels,
 }: {
   pattern:
     | {
@@ -182,13 +220,14 @@ function DayBody({
       }
     | undefined;
   actuals: Actuals;
+  labels: DayLabels;
 }) {
   if (!pattern || pattern.type === "day_off") {
     return (
       <div className="flex flex-1 items-center justify-center py-3 text-center">
         <div className="flex flex-col items-center gap-1.5">
           <Sun className="h-4 w-4 text-muted-foreground" />
-          <span className="label-eyebrow">Day off</span>
+          <span className="label-eyebrow">{labels.dayOff}</span>
         </div>
       </div>
     );
@@ -198,13 +237,13 @@ function DayBody({
       <ul className="flex flex-col gap-1.5">
         <Slot
           icon={Sun}
-          label="Start"
+          label={labels.start}
           expected={pattern.startTime ?? "—"}
           actual={actuals["shift_in"]}
         />
         <Slot
           icon={Moon}
-          label="End"
+          label={labels.end}
           expected={pattern.endTime ?? "—"}
           actual={actuals["shift_out"]}
         />
@@ -216,25 +255,25 @@ function DayBody({
       <ul className="flex flex-col gap-1.5">
         <Slot
           icon={Sun}
-          label="Start"
+          label={labels.start}
           expected={pattern.startTime ?? "—"}
           actual={actuals["shift_in"]}
         />
         <Slot
           icon={Coffee}
-          label={`Lunch · ${pattern.lunchBreakMinutes ?? "?"}m on-site`}
+          label={labels.lunchOnSiteWithMins(pattern.lunchBreakMinutes)}
           expected={pattern.lunchOutTime ?? "—"}
           actual={actuals["lunch_out"]}
         />
         <Slot
           icon={Briefcase}
-          label="Back"
+          label={labels.back}
           expected={pattern.lunchInTime ?? "—"}
           actual={actuals["lunch_in"]}
         />
         <Slot
           icon={Moon}
-          label="End"
+          label={labels.end}
           expected={pattern.endTime ?? "—"}
           actual={actuals["shift_out"]}
         />
@@ -246,25 +285,25 @@ function DayBody({
     <ul className="flex flex-col gap-1.5">
       <Slot
         icon={Sun}
-        label="Start"
+        label={labels.start}
         expected={pattern.startTime ?? "—"}
         actual={actuals["shift_in"]}
       />
       <Slot
         icon={UtensilsCrossed}
-        label="Lunch out"
+        label={labels.lunchOut}
         expected={pattern.lunchOutTime ?? "—"}
         actual={actuals["lunch_out"]}
       />
       <Slot
         icon={Coffee}
-        label="Lunch in"
+        label={labels.lunchIn}
         expected={pattern.lunchInTime ?? "—"}
         actual={actuals["lunch_in"]}
       />
       <Slot
         icon={Moon}
-        label="End"
+        label={labels.end}
         expected={pattern.endTime ?? "—"}
         actual={actuals["shift_out"]}
       />

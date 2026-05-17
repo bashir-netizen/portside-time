@@ -1,17 +1,20 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { adminLoginAction, type LoginActionResult } from "./actions";
 
 const initial: LoginActionResult | null = null;
 
 export function AdminLoginForm() {
+  const t = useTranslations("login");
+  const tCommon = useTranslations("common");
   const [state, action, pending] = useActionState(adminLoginAction, initial);
 
   return (
     <form action={action} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Email</span>
+        <span className="text-sm font-medium">{t("adminEmail")}</span>
         <input
           name="email"
           type="email"
@@ -21,7 +24,7 @@ export function AdminLoginForm() {
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Password</span>
+        <span className="text-sm font-medium">{t("adminPassword")}</span>
         <input
           name="password"
           type="password"
@@ -40,7 +43,7 @@ export function AdminLoginForm() {
         disabled={pending}
         className="rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
-        {pending ? "Signing in…" : "Sign in"}
+        {pending ? tCommon("signingIn") : tCommon("signIn")}
       </button>
     </form>
   );

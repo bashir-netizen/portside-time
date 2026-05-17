@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { EMPLOYEE_NAV, isActiveItem } from "./employee-nav";
 import { cn } from "@/lib/utils";
 
 export function EmployeeMobileNav() {
   const pathname = usePathname() ?? "";
+  const t = useTranslations("nav");
 
   return (
     <nav
       aria-label="Employee mobile navigation"
       className="fixed bottom-0 left-0 right-0 z-30 border-t border-sidebar-border bg-sidebar/95 px-1 pb-[max(env(safe-area-inset-bottom),0.25rem)] pt-1 backdrop-blur md:hidden"
     >
-      <ul className="grid grid-cols-5">
+      <ul className="grid grid-cols-6">
         {EMPLOYEE_NAV.map((item) => {
           const active = isActiveItem(item, pathname);
           const Icon = item.icon;
@@ -33,7 +35,7 @@ export function EmployeeMobileNav() {
                   className="h-5 w-5"
                   strokeWidth={active ? 2.25 : 1.75}
                 />
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
               </Link>
             </li>
           );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { CheckCircle2, Send } from "lucide-react";
 import { submitJustificationAction } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ export function JustifyForm({
   incidentId: string;
   hoursRemaining: number;
 }) {
+  const t = useTranslations("justify.form");
   const [state, action, pending] = useActionState<Result, FormData>(
     async (_prev, fd) => {
       const r = await submitJustificationAction(fd);
@@ -28,7 +30,7 @@ export function JustifyForm({
     return (
       <div className="flex items-center gap-2 rounded-sm border border-[var(--success)]/40 bg-[var(--success)]/10 px-3 py-2 text-xs text-foreground">
         <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
-        Submitted. The admin will review and decide.
+        {t("successTitle")}
       </div>
     );
   }
@@ -40,7 +42,7 @@ export function JustifyForm({
         htmlFor={`reason-${incidentId}`}
         className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
       >
-        Reason — {hoursRemaining}h left to submit
+        {t("reasonLabel", { hours: hoursRemaining })}
       </Label>
       <Textarea
         id={`reason-${incidentId}`}
@@ -48,7 +50,7 @@ export function JustifyForm({
         rows={3}
         minLength={3}
         maxLength={2000}
-        placeholder="Explain what happened. Be specific — &lsquo;traffic&rsquo; is too vague."
+        placeholder={t("reasonPlaceholder")}
         required
         className="text-sm"
       />
@@ -62,7 +64,7 @@ export function JustifyForm({
         className="self-start"
       >
         <Send className="mr-1.5 h-3.5 w-3.5" />
-        {pending ? "Submitting…" : "Submit justification"}
+        {pending ? t("submitting") : t("submit")}
       </Button>
     </form>
   );

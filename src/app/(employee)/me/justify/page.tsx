@@ -9,52 +9,54 @@ import {
   Hourglass,
 } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
+import { getLocale, getTranslations } from "next-intl/server";
 import { readSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { getCompanyConfig } from "@/lib/config";
 import { flipExpiredJustifications } from "@/lib/punch/late-incident";
+import { dateLocaleFor } from "@/i18n/date";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { JustifyForm } from "./JustifyForm";
 
-export const metadata = { title: "Justify — Portside Time" };
-
 const TZ = "Africa/Djibouti";
 
-const STATUS_META: Record<
+const STATUS_TONE: Record<
   string,
-  { label: string; tone: "warn" | "info" | "ok" | "bad"; icon: typeof CheckCircle2 }
+  { tone: "warn" | "info" | "ok" | "bad"; icon: typeof CheckCircle2 }
 > = {
-  pending_justification: { label: "Awaiting your reason", tone: "warn", icon: Hourglass },
-  submitted: { label: "Submitted — awaiting decision", tone: "info", icon: Clock4 },
-  justified: { label: "Justified", tone: "ok", icon: CheckCircle2 },
-  manager_unjustified: { label: "Rejected by admin", tone: "bad", icon: XCircle },
-  auto_unjustified: { label: "Auto — window elapsed", tone: "bad", icon: XCircle },
+  pending_justification: { tone: "warn", icon: Hourglass },
+  submitted: { tone: "info", icon: Clock4 },
+  justified: { tone: "ok", icon: CheckCircle2 },
+  manager_unjustified: { tone: "bad", icon: XCircle },
+  auto_unjustified: { tone: "bad", icon: XCircle },
 };
 
-const KIND_LABEL: Record<string, string> = {
-  late_arrival: "Late arrival",
-  early_leave: "Left early",
-  missed_punch_out: "Missed punch-out",
-};
+export async function generateMetadata() {
+  const t = await getTranslations("justify");
+  const tCommon = await getTranslations("common");
+  return { title: `${t("title")} — ${tCommon("appName")}` };
+}
 
 export default async function JustifyPage() {
   const session = await readSession();
   if (!session?.employeeId || session.role !== "employee") redirect("/login");
 
-  // Same lazy auto-flip pattern as /admin/late — keeps statuses honest
-  // without depending on a separate cron sidecar.
   await flipExpiredJustifications();
 
-  const [incidents, config] = await Promise.all([
+  const [incidents, config, t, tCommon, locale] = await Promise.all([
     db.lateIncident.findMany({
       where: { employeeId: session.employeeId },
       orderBy: [{ status: "asc" }, { incidentDate: "desc" }],
       take: 60,
     }),
     getCompanyConfig(),
+    getTranslations("justify"),
+    getTranslations("common"),
+    getLocale(),
   ]);
+  const dateLocale = dateLocaleFor(locale as "fr" | "en");
 
   const open = incidents.filter((i) => i.status === "pending_justification");
   const submitted = incidents.filter((i) => i.status === "submitted");
@@ -67,20 +69,16 @@ export default async function JustifyPage() {
       <header className="flex flex-col gap-1">
         <div className="label-eyebrow flex items-center gap-1.5">
           <Link href="/me" className="hover:text-foreground">
-            Today
+            {tCommon("today")}
           </Link>
           <ChevronRight className="h-3 w-3" />
-          <span>Justify</span>
+          <span>{t("crumb")}</span>
         </div>
         <h1 className="font-display text-4xl tracking-tight md:text-5xl">
-          Justify a late incident
+          {t("title")}
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          When a punch lands late (or you leave early), the system flags it
-          here. You have{" "}
-          <span className="font-mono">{config.justificationWindowHours}h</span>{" "}
-          to explain — after that it auto-flips to unjustified and may count
-          toward the disciplinary threshold.
+          {t("intro", { hours: config.justificationWindowHours })}
         </p>
       </header>
 
@@ -92,11 +90,10 @@ export default async function JustifyPage() {
             <CheckCircle2 className="h-5 w-5 text-[var(--success)]" />
             <div>
               <h2 className="font-display text-lg tracking-tight">
-                Nothing to justify — you&apos;re all clear.
+                {t("allClearTitle")}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Keep punching on time. If something comes up, this page is
-                where you&apos;ll handle it.
+                {t("allClearBody")}
               </p>
             </div>
           </div>
@@ -107,7 +104,7 @@ export default async function JustifyPage() {
         <section className="flex flex-col gap-3">
           <SectionHeader
             icon={AlertTriangle}
-            label="Needs your justification"
+            label={t("sectionOpen")}
             count={open.length}
             tone="warn"
           />
@@ -123,7 +120,16 @@ export default async function JustifyPage() {
                 ),
               );
               return (
-                <IncidentCard key={i.id} incident={i}>
+                <IncidentCard
+                  key={i.id}
+                  incident={i}
+                  kindLabel={t(`kinds.${i.kind}`)}
+                  statusLabel={t(`statuses.${i.status}`)}
+                  recordedAtPrefix={t("recordedAt", {
+                    time: formatInTimeZone(i.createdAt, TZ, "HH:mm"),
+                  })}
+                  dateLabel={formatInTimeZone(i.incidentDate, TZ, "EEEE d MMMM", { locale: dateLocale })}
+                >
                   <Separator className="my-3" />
                   <JustifyForm
                     incidentId={i.id}
@@ -140,13 +146,22 @@ export default async function JustifyPage() {
         <section className="flex flex-col gap-3">
           <SectionHeader
             icon={Clock4}
-            label="Submitted — awaiting admin decision"
+            label={t("sectionSubmitted")}
             count={submitted.length}
             tone="info"
           />
           <div className="grid gap-3">
             {submitted.map((i) => (
-              <IncidentCard key={i.id} incident={i}>
+              <IncidentCard
+                key={i.id}
+                incident={i}
+                kindLabel={t(`kinds.${i.kind}`)}
+                statusLabel={t(`statuses.${i.status}`)}
+                recordedAtPrefix={t("recordedAt", {
+                  time: formatInTimeZone(i.createdAt, TZ, "HH:mm"),
+                })}
+                dateLabel={formatInTimeZone(i.incidentDate, TZ, "EEEE d MMMM", { locale: dateLocale })}
+              >
                 {i.reason ? (
                   <p className="mt-2 rounded-sm border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                     &ldquo;{i.reason}&rdquo;
@@ -162,13 +177,22 @@ export default async function JustifyPage() {
         <section className="flex flex-col gap-3">
           <SectionHeader
             icon={CheckCircle2}
-            label="History"
+            label={t("sectionHistory")}
             count={decided.length}
             tone="muted"
           />
           <div className="grid gap-3">
             {decided.map((i) => (
-              <IncidentCard key={i.id} incident={i}>
+              <IncidentCard
+                key={i.id}
+                incident={i}
+                kindLabel={t(`kinds.${i.kind}`)}
+                statusLabel={t(`statuses.${i.status}`)}
+                recordedAtPrefix={t("recordedAt", {
+                  time: formatInTimeZone(i.createdAt, TZ, "HH:mm"),
+                })}
+                dateLabel={formatInTimeZone(i.incidentDate, TZ, "EEEE d MMMM", { locale: dateLocale })}
+              >
                 {i.reason ? (
                   <p className="mt-2 rounded-sm border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                     &ldquo;{i.reason}&rdquo;
@@ -177,7 +201,7 @@ export default async function JustifyPage() {
                 {i.decisionNotes ? (
                   <p className="mt-2 text-xs">
                     <span className="font-mono uppercase tracking-wider text-muted-foreground">
-                      Admin:
+                      {t("adminPrefix")}
                     </span>{" "}
                     {i.decisionNotes}
                   </p>
@@ -221,6 +245,10 @@ function SectionHeader({
 
 function IncidentCard({
   incident,
+  kindLabel,
+  statusLabel,
+  dateLabel,
+  recordedAtPrefix,
   children,
 }: {
   incident: {
@@ -231,11 +259,14 @@ function IncidentCard({
     status: string;
     createdAt: Date;
   };
+  kindLabel: string;
+  statusLabel: string;
+  dateLabel: string;
+  recordedAtPrefix: string;
   children?: React.ReactNode;
 }) {
-  const meta = STATUS_META[incident.status] ?? STATUS_META.pending_justification!;
+  const meta = STATUS_TONE[incident.status] ?? STATUS_TONE.pending_justification!;
   const Icon = meta.icon;
-  const dateLabel = formatInTimeZone(incident.incidentDate, TZ, "EEEE d MMMM");
   const toneClass =
     meta.tone === "warn"
       ? "border-[var(--warning)]/30 bg-[var(--warning)]/5"
@@ -259,7 +290,7 @@ function IncidentCard({
         <div>
           <div className="flex items-center gap-2">
             <span className="font-display text-lg tracking-tight">
-              {KIND_LABEL[incident.kind] ?? incident.kind}
+              {kindLabel}
             </span>
             <Badge
               variant="outline"
@@ -269,15 +300,14 @@ function IncidentCard({
             </Badge>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {dateLabel} · recorded{" "}
-            {formatInTimeZone(incident.createdAt, TZ, "HH:mm")}
+            {dateLabel} · {recordedAtPrefix}
           </p>
         </div>
         <span
           className={`flex items-center gap-1.5 rounded-sm border border-border bg-background px-2 py-1 text-[10px] font-mono uppercase tracking-wider ${badgeColor}`}
         >
           <Icon className="h-3 w-3" />
-          {meta.label}
+          {statusLabel}
         </span>
       </div>
       {children}

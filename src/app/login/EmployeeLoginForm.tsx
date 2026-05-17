@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useTranslations } from "next-intl";
 import { employeeLoginAction, type LoginActionResult } from "./actions";
 
 const initial: LoginActionResult | null = null;
@@ -8,6 +9,8 @@ const initial: LoginActionResult | null = null;
 type Employee = { id: string; fullName: string; position: string };
 
 export function EmployeeLoginForm({ employees }: { employees: Employee[] }) {
+  const t = useTranslations("login");
+  const tCommon = useTranslations("common");
   const [state, action, pending] = useActionState(
     employeeLoginAction,
     initial,
@@ -18,7 +21,7 @@ export function EmployeeLoginForm({ employees }: { employees: Employee[] }) {
   if (employees.length === 0) {
     return (
       <p className="rounded-md bg-zinc-100 px-4 py-3 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-        No active employees yet. Ask the admin to create one.
+        {t("noEmployees")}
       </p>
     );
   }
@@ -66,12 +69,12 @@ export function EmployeeLoginForm({ employees }: { employees: Employee[] }) {
           }}
           className="text-xs text-zinc-600 underline-offset-2 hover:underline dark:text-zinc-400"
         >
-          Change
+          {tCommon("change")}
         </button>
       </div>
 
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">PIN</span>
+        <span className="text-sm font-medium">{t("pin")}</span>
         <input
           name="pin"
           inputMode="numeric"
@@ -82,7 +85,7 @@ export function EmployeeLoginForm({ employees }: { employees: Employee[] }) {
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
           className="rounded-md border border-zinc-300 px-3 py-3 text-center text-2xl tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900"
-          placeholder="••••••"
+          placeholder={t("pinPlaceholder")}
         />
       </label>
 
@@ -96,7 +99,7 @@ export function EmployeeLoginForm({ employees }: { employees: Employee[] }) {
         disabled={pending || pin.length !== 6}
         className="rounded-md bg-zinc-900 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
       >
-        {pending ? "Signing in…" : "Sign in"}
+        {pending ? tCommon("signingIn") : tCommon("signIn")}
       </button>
     </form>
   );

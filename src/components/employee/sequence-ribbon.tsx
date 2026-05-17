@@ -1,4 +1,5 @@
 import { Check, Sunrise, UtensilsCrossed, Briefcase, Sunset } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { type PunchType } from "@/lib/punch/types";
 import { expectedSequence, type DayPatternType } from "@/lib/punch/sequence";
 import { cn } from "@/lib/utils";
@@ -19,18 +20,11 @@ type Punch = {
  * Each step shows icon + label + state (done / active / pending / final-done).
  */
 
-const STEP_META: Record<
-  PunchType,
-  {
-    label: string;
-    eyebrow: string;
-    Icon: typeof Check;
-  }
-> = {
-  shift_in: { label: "Start of shift", eyebrow: "Arrival", Icon: Sunrise },
-  lunch_out: { label: "Lunch out", eyebrow: "Break begins", Icon: UtensilsCrossed },
-  lunch_in: { label: "Back from lunch", eyebrow: "Break ends", Icon: Briefcase },
-  shift_out: { label: "End of shift", eyebrow: "Departure", Icon: Sunset },
+const STEP_ICONS: Record<PunchType, typeof Check> = {
+  shift_in: Sunrise,
+  lunch_out: UtensilsCrossed,
+  lunch_in: Briefcase,
+  shift_out: Sunset,
 };
 
 type Props = {
@@ -39,11 +33,12 @@ type Props = {
   dayPatternType?: DayPatternType;
 };
 
-export function SequenceRibbon({
+export async function SequenceRibbon({
   todaysPunches,
   timezone = "Africa/Djibouti",
   dayPatternType = "split_day",
 }: Props) {
+  const tRibbon = await getTranslations("ribbon");
   // Steps to render = the expected sequence for today's day-pattern type.
   // For half-day this is just [shift_in, shift_out]; for day-off it's empty
   // but the parent shouldn't be calling us in that case.
@@ -67,9 +62,10 @@ export function SequenceRibbon({
         const isDone = !!punch;
         const isActive = !isDone && idx === activeIdx;
         const isFinal = type === "shift_out" && isDone;
-        const meta = STEP_META[type];
-        const Icon = meta.Icon;
-        const eyebrowNumber = `${String(idx + 1).padStart(2, "0")} · ${meta.eyebrow}`;
+        const Icon = STEP_ICONS[type];
+        const label = tRibbon(`steps.${type}.label`);
+        const eyebrow = tRibbon(`steps.${type}.eyebrow`);
+        const eyebrowNumber = `${String(idx + 1).padStart(2, "0")} · ${eyebrow}`;
 
         return (
           <div
@@ -138,7 +134,7 @@ export function SequenceRibbon({
                   isDone ? "text-foreground" : isActive ? "text-foreground" : "text-muted-foreground"
                 )}
               >
-                {meta.label}
+                {label}
               </div>
               <div
                 className={cn(
@@ -155,7 +151,7 @@ export function SequenceRibbon({
                 {punch
                   ? formatInTimeZone(punch.punchedAt, timezone, "HH:mm")
                   : isActive
-                    ? "Next"
+                    ? tRibbon("next")
                     : "—"}
               </div>
             </div>

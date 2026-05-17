@@ -10,13 +10,14 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
+import { getTranslations } from "next-intl/server";
 import { readSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { getTodaysPunches } from "@/lib/punch/repo";
 import { djiboutiDayWindow } from "@/lib/punch/window";
 import { nextPunchType, dayStatus } from "@/lib/punch/sequence";
 import { getDayPatternForEmployee } from "@/lib/punch/day-pattern";
-import { PUNCH_LABELS, type PunchType, type DayStatus } from "@/lib/punch/types";
+import { type PunchType, type DayStatus } from "@/lib/punch/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SequenceRibbon } from "@/components/employee/sequence-ribbon";
@@ -44,6 +45,9 @@ export default async function MePage() {
   ]);
   if (!employee) redirect("/login");
 
+  const t = await getTranslations("me");
+  const tPunch = await getTranslations("punchTypes");
+
   const typesToday = todays.map((p) => p.punchType);
   const next = nextPunchType(typesToday, dayPattern.type);
   const status = dayStatus(typesToday);
@@ -59,14 +63,14 @@ export default async function MePage() {
     select: { id: true, punchType: true, punchedAt: true },
   });
 
-  const greeting = greetingForHour(
-    Number(formatInTimeZone(new Date(), TZ, "H"))
-  );
+  const hour = Number(formatInTimeZone(new Date(), TZ, "H"));
+  const greeting =
+    hour < 12 ? t("greetingMorning") : hour < 18 ? t("greetingAfternoon") : t("greetingEvening");
 
   const templateLabel =
     dayPattern.templateName ??
     employee.defaultScheduleTemplate?.name ??
-    "Unassigned";
+    "—";
   const isDayOff = dayPattern.type === "day_off";
 
   return (
@@ -78,7 +82,11 @@ export default async function MePage() {
           <h1 className="font-display text-3xl tracking-tight md:text-4xl">
             {employee.fullName.split(" ")[0]}
           </h1>
-          <StatusBadge status={status} isDayOff={isDayOff} />
+          <StatusBadge
+            status={status}
+            isDayOff={isDayOff}
+            label={isDayOff ? t("status.dayOff") : t(`status.${statusKeyFor(status)}`)}
+          />
         </div>
       </header>
 
@@ -90,11 +98,10 @@ export default async function MePage() {
           <AlertTriangle className="h-5 w-5 text-[var(--warning)]" />
           <div className="flex-1">
             <p className="text-sm font-medium text-foreground">
-              {pendingJustifications} incident
-              {pendingJustifications === 1 ? "" : "s"} to justify
+              {t("justifyBannerCount", { count: pendingJustifications })}
             </p>
             <p className="text-xs text-muted-foreground">
-              Explain what happened before the window closes — tap to open.
+              {t("justifyBannerBody")}
             </p>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
@@ -107,9 +114,9 @@ export default async function MePage() {
         className="flex flex-col gap-3"
       >
         <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-xl tracking-tight">Today</h2>
+          <h2 className="font-display text-xl tracking-tight">{t("todayHeader")}</h2>
           <span className="flex items-center gap-2 font-mono text-xs text-muted-foreground tabular-nums">
-            <DayPatternBadge type={dayPattern.type} />
+            <DayPatternBadge type={dayPattern.type} label={t(`dayPattern.${dayPattern.type as "split_day" | "continuous_day" | "half_day" | "day_off"}`)} />
             {templateLabel}
           </span>
         </div>
@@ -120,10 +127,10 @@ export default async function MePage() {
               strokeWidth={1.5}
             />
             <p className="mt-3 font-display text-2xl tracking-tight">
-              Enjoy your day off
+              {t("dayOffTitle")}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              No punches expected today.
+              {t("dayOffBody")}
             </p>
           </Card>
         ) : (
@@ -146,6 +153,16 @@ export default async function MePage() {
       <ScheduleStrip
         templateLabel={templateLabel}
         dayPattern={dayPattern}
+        labels={{
+          header: t("scheduleHeader"),
+          noShift: t("noShiftToday"),
+          start: t("scheduleStart"),
+          end: t("scheduleEnd"),
+          lunchOut: t("scheduleLunchOut"),
+          lunchIn: t("scheduleLunchIn"),
+          lunchOnSite: t("scheduleLunchOnSite"),
+          lunchOnSiteWithMins: (m: number) => t("scheduleLunchOnSiteWithMins", { minutes: m }),
+        }}
       />
 
       {/* Recent activity */}
@@ -154,13 +171,13 @@ export default async function MePage() {
           <div className="flex items-baseline justify-between">
             <div className="flex items-center gap-2">
               <History className="h-4 w-4 text-muted-foreground" />
-              <h2 className="font-display text-xl tracking-tight">Recent</h2>
+              <h2 className="font-display text-xl tracking-tight">{t("recentHeader")}</h2>
             </div>
             <Link
               href="/me/schedule"
               className="label-eyebrow hover:text-foreground"
             >
-              View week
+              {t("viewWeek")}
               <ChevronRight className="ml-0.5 inline-block h-3 w-3" />
             </Link>
           </div>
@@ -172,7 +189,7 @@ export default async function MePage() {
                   className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
                 >
                   <span className="text-foreground">
-                    {PUNCH_LABELS[p.punchType as PunchType]}
+                    {tPunch(p.punchType as PunchType)}
                   </span>
                   <span className="font-mono text-xs text-muted-foreground tabular-nums">
                     {formatInTimeZone(p.punchedAt, TZ, "EEE d LLL · HH:mm")}
@@ -187,45 +204,51 @@ export default async function MePage() {
   );
 }
 
-function DayPatternBadge({ type }: { type: string }) {
-  const meta: Record<string, { label: string; className: string }> = {
-    split_day: {
-      label: "Split day",
-      className:
-        "border-border bg-card text-muted-foreground",
-    },
-    continuous_day: {
-      label: "Continuous · lunch on-site",
-      className:
-        "border-[var(--success)]/30 bg-[var(--success)]/15 text-[var(--success)]",
-    },
-    half_day: {
-      label: "Half day",
-      className:
-        "border-[var(--brass)]/30 bg-[var(--brass)]/15 text-[var(--brass)]",
-    },
-    day_off: {
-      label: "Day off",
-      className: "border-border bg-muted text-muted-foreground",
-    },
+function DayPatternBadge({ type, label }: { type: string; label: string }) {
+  const className: Record<string, string> = {
+    split_day: "border-border bg-card text-muted-foreground",
+    continuous_day:
+      "border-[var(--success)]/30 bg-[var(--success)]/15 text-[var(--success)]",
+    half_day:
+      "border-[var(--brass)]/30 bg-[var(--brass)]/15 text-[var(--brass)]",
+    day_off: "border-border bg-muted text-muted-foreground",
   };
-  const m = meta[type] ?? meta.split_day!;
   return (
     <Badge
       variant="outline"
-      className={`border font-mono text-[10px] uppercase tracking-wider ${m.className}`}
+      className={`border font-mono text-[10px] uppercase tracking-wider ${className[type] ?? className.split_day}`}
     >
-      {m.label}
+      {label}
     </Badge>
   );
+}
+
+function statusKeyFor(
+  status: DayStatus,
+): "notStarted" | "working" | "onLunch" | "backFromLunch" | "finished" {
+  switch (status) {
+    case "not_started":
+      return "notStarted";
+    case "on_lunch":
+      return "onLunch";
+    case "back_from_lunch":
+      return "backFromLunch";
+    case "finished":
+      return "finished";
+    case "working":
+    default:
+      return "working";
+  }
 }
 
 function StatusBadge({
   status,
   isDayOff,
+  label,
 }: {
   status: DayStatus;
   isDayOff: boolean;
+  label: string;
 }) {
   if (isDayOff) {
     return (
@@ -233,7 +256,7 @@ function StatusBadge({
         variant="outline"
         className="border-[var(--brass)]/30 bg-[var(--brass)]/10 font-mono text-[10px] uppercase tracking-wider text-[var(--brass)]"
       >
-        Day off
+        {label}
       </Badge>
     );
   }
@@ -244,39 +267,46 @@ function StatusBadge({
           variant="outline"
           className="border-border bg-card font-mono text-[10px] uppercase tracking-wider"
         >
-          Not started
-        </Badge>
-      );
-    case "working":
-      return (
-        <Badge className="border-[var(--brass)]/30 bg-[var(--brass)]/15 font-mono text-[10px] uppercase tracking-wider text-[var(--brass)] hover:bg-[var(--brass)]/15">
-          Working
+          {label}
         </Badge>
       );
     case "on_lunch":
       return (
         <Badge className="border-[var(--warning)]/30 bg-[var(--warning)]/15 font-mono text-[10px] uppercase tracking-wider text-[var(--foreground)] hover:bg-[var(--warning)]/15">
-          On lunch
-        </Badge>
-      );
-    case "back_from_lunch":
-      return (
-        <Badge className="border-[var(--brass)]/30 bg-[var(--brass)]/15 font-mono text-[10px] uppercase tracking-wider text-[var(--brass)] hover:bg-[var(--brass)]/15">
-          Working
+          {label}
         </Badge>
       );
     case "finished":
       return (
         <Badge className="border-[var(--success)]/30 bg-[var(--success)]/15 font-mono text-[10px] uppercase tracking-wider text-[var(--success)] hover:bg-[var(--success)]/15">
-          Finished
+          {label}
+        </Badge>
+      );
+    // working / back_from_lunch share the same visual
+    default:
+      return (
+        <Badge className="border-[var(--brass)]/30 bg-[var(--brass)]/15 font-mono text-[10px] uppercase tracking-wider text-[var(--brass)] hover:bg-[var(--brass)]/15">
+          {label}
         </Badge>
       );
   }
 }
 
+type ScheduleLabels = {
+  header: string;
+  noShift: string;
+  start: string;
+  end: string;
+  lunchOut: string;
+  lunchIn: string;
+  lunchOnSite: string;
+  lunchOnSiteWithMins: (minutes: number) => string;
+};
+
 function ScheduleStrip({
   templateLabel,
   dayPattern,
+  labels,
 }: {
   templateLabel: string;
   dayPattern: {
@@ -287,53 +317,54 @@ function ScheduleStrip({
     lunchInTime: string | null;
     lunchBreakMinutes: number | null;
   };
+  labels: ScheduleLabels;
 }) {
   const { type, startTime, endTime, lunchOutTime, lunchInTime, lunchBreakMinutes } =
     dayPattern;
   return (
     <section
-      aria-label="Today's expected schedule"
+      aria-label={labels.header}
       className="flex flex-col gap-2"
     >
       <div className="flex items-center gap-2">
         <CalendarClock className="h-4 w-4 text-muted-foreground" />
-        <h2 className="font-display text-xl tracking-tight">Schedule</h2>
+        <h2 className="font-display text-xl tracking-tight">{labels.header}</h2>
         <span className="ml-auto label-eyebrow">{templateLabel}</span>
       </div>
       <Card className="bg-card p-0">
         {type === "day_off" ? (
           <div className="px-5 py-5 text-center text-sm text-muted-foreground">
-            No shift scheduled for today.
+            {labels.noShift}
           </div>
         ) : type === "half_day" ? (
           <div className="grid grid-cols-2 divide-x divide-border">
-            <Block eyebrow="Start" time={startTime ?? "—"} />
-            <Block eyebrow="End" time={endTime ?? "—"} />
+            <Block eyebrow={labels.start} time={startTime ?? "—"} />
+            <Block eyebrow={labels.end} time={endTime ?? "—"} />
           </div>
         ) : type === "continuous_day" ? (
           <div className="grid grid-cols-3 divide-x divide-border">
-            <Block eyebrow="Start" time={startTime ?? "—"} />
+            <Block eyebrow={labels.start} time={startTime ?? "—"} />
             <Block
               eyebrow={
                 lunchBreakMinutes
-                  ? `Lunch · ${lunchBreakMinutes}m on-site`
-                  : "Lunch on-site"
+                  ? labels.lunchOnSiteWithMins(lunchBreakMinutes)
+                  : labels.lunchOnSite
               }
               icon={Coffee}
               time={lunchOutTime ?? "—"}
             />
-            <Block eyebrow="End" time={endTime ?? "—"} />
+            <Block eyebrow={labels.end} time={endTime ?? "—"} />
           </div>
         ) : (
           <div className="grid grid-cols-4 divide-x divide-border">
-            <Block eyebrow="Start" time={startTime ?? "—"} />
+            <Block eyebrow={labels.start} time={startTime ?? "—"} />
             <Block
-              eyebrow="Lunch out"
+              eyebrow={labels.lunchOut}
               icon={UtensilsCrossed}
               time={lunchOutTime ?? "—"}
             />
-            <Block eyebrow="Lunch in" icon={Coffee} time={lunchInTime ?? "—"} />
-            <Block eyebrow="End" time={endTime ?? "—"} />
+            <Block eyebrow={labels.lunchIn} icon={Coffee} time={lunchInTime ?? "—"} />
+            <Block eyebrow={labels.end} time={endTime ?? "—"} />
           </div>
         )}
       </Card>
@@ -363,8 +394,3 @@ function Block({
   );
 }
 
-function greetingForHour(h: number): string {
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
-}

@@ -2,9 +2,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { Anchor, Building2, Wifi, WifiOff, ShieldAlert } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { readSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { resolveClientIp } from "@/lib/ip";
+import { type Locale } from "@/i18n/locale";
+import { LocaleToggle } from "@/components/employee/locale-toggle";
 import { AdminLoginForm } from "./AdminLoginForm";
 import { EmployeeLoginForm } from "./EmployeeLoginForm";
 
@@ -22,6 +25,8 @@ export default async function LoginPage({
 
   const params = await searchParams;
   const tab: Tab = params.tab === "admin" ? "admin" : "employee";
+  const t = await getTranslations("login");
+  const locale = await getLocale();
 
   // Resolve client IP + check against active allowlist so we can tell the
   // user whether they're connecting from the office or not. Read-only —
@@ -54,6 +59,10 @@ export default async function LoginPage({
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-6 py-10">
       <div className="w-full max-w-md">
+        <div className="mb-4 flex justify-end">
+          <LocaleToggle current={locale as Locale} variant="compact" />
+        </div>
+
         <header className="mb-7 flex flex-col items-center gap-3 text-center">
           <span
             aria-hidden
@@ -65,9 +74,7 @@ export default async function LoginPage({
             <h1 className="font-display text-3xl tracking-tight">
               Portside Time
             </h1>
-            <p className="label-eyebrow !text-[0.6875rem]">
-              Sign in · attendance ledger
-            </p>
+            <p className="label-eyebrow !text-[0.6875rem]">{t("tagline")}</p>
           </div>
         </header>
 
@@ -78,17 +85,23 @@ export default async function LoginPage({
           isOnOfficeNetwork={isOnOfficeNetwork}
           matchedLabel={matchedOffice?.label ?? null}
           clientIp={clientIp}
+          labels={{
+            onOffice: t("onOffice"),
+            offEmployeeTitle: t("offEmployeeTitle"),
+            offEmployeeBody: t("offEmployeeBody"),
+            offAdminLabel: t("offAdminLabel"),
+          }}
         />
 
         <nav
           className="mt-5 mb-5 grid grid-cols-2 rounded-sm border border-border p-1"
-          aria-label="Sign-in mode"
+          aria-label={t("tabAriaLabel")}
         >
           <TabLink href={`/login?tab=employee`} active={tab === "employee"}>
-            Employee
+            {t("tabEmployee")}
           </TabLink>
           <TabLink href={`/login?tab=admin`} active={tab === "admin"}>
-            Admin
+            {t("tabAdmin")}
           </TabLink>
         </nav>
 
@@ -100,7 +113,7 @@ export default async function LoginPage({
 
         {devBypassActive ? (
           <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--brass)]/80">
-            dev · office gates bypassed (DEV_BYPASS_OFFICE_GATES=1)
+            {t("devBypass")}
           </p>
         ) : null}
       </div>
@@ -138,11 +151,18 @@ function NetworkBanner({
   isOnOfficeNetwork,
   matchedLabel,
   clientIp,
+  labels,
 }: {
   tab: Tab;
   isOnOfficeNetwork: boolean;
   matchedLabel: string | null;
   clientIp: string | null;
+  labels: {
+    onOffice: string;
+    offEmployeeTitle: string;
+    offEmployeeBody: string;
+    offAdminLabel: string;
+  };
 }) {
   if (isOnOfficeNetwork) {
     return (
@@ -152,9 +172,7 @@ function NetworkBanner({
       >
         <Wifi className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--success)]" />
         <div className="flex-1">
-          <div className="font-medium leading-tight">
-            On the office network
-          </div>
+          <div className="font-medium leading-tight">{labels.onOffice}</div>
           {matchedLabel ? (
             <div className="mt-0.5 label-eyebrow !text-[0.625rem]">
               {matchedLabel}
@@ -170,8 +188,6 @@ function NetworkBanner({
     );
   }
 
-  // Off-office. Tone shifts by tab: blunt for employees (will be blocked),
-  // informational for admins (still allowed).
   if (tab === "employee") {
     return (
       <div
@@ -181,12 +197,10 @@ function NetworkBanner({
         <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" />
         <div className="flex-1">
           <div className="text-sm font-medium leading-tight">
-            You're not on the office network
+            {labels.offEmployeeTitle}
           </div>
           <p className="mt-1 leading-snug text-muted-foreground">
-            Employees can only punch in from the office Wi-Fi. Your IP will be
-            recorded and sent to your manager for approval — ask them to add
-            it before trying again.
+            {labels.offEmployeeBody}
           </p>
         </div>
         {clientIp ? (
@@ -198,16 +212,13 @@ function NetworkBanner({
     );
   }
 
-  // Admin tab, off-office. Show a subtle note, not a warning.
   return (
     <div
       role="status"
       className="flex items-center gap-2 rounded-sm border border-border bg-card px-3 py-2 text-xs text-muted-foreground"
     >
       <Building2 className="h-3.5 w-3.5 shrink-0" />
-      <span className="flex-1 truncate">
-        Off-office admin sign-in
-      </span>
+      <span className="flex-1 truncate">{labels.offAdminLabel}</span>
       <ShieldAlert
         aria-hidden
         className="h-3.5 w-3.5 text-[var(--brass)]/70"

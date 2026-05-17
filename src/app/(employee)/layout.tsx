@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Anchor } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 import { readSession } from "@/lib/auth/session";
 import { logoutAction } from "@/app/login/actions";
 import { db } from "@/lib/db";
@@ -21,7 +22,11 @@ export default async function EmployeeLayout({
     select: { fullName: true, position: true },
   });
 
-  const todayLabel = new Intl.DateTimeFormat("fr-FR", {
+  const locale = await getLocale();
+  const t = await getTranslations("common");
+  const tMe = await getTranslations("me");
+  const intlLocale = locale === "fr" ? "fr-FR" : "en-GB";
+  const todayLabel = new Intl.DateTimeFormat(intlLocale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -63,7 +68,7 @@ export default async function EmployeeLayout({
               type="submit"
               className="w-full rounded-sm px-3 py-2 text-left text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
-              Sign out
+              {t("signOut")}
             </button>
           </form>
         </div>
@@ -85,7 +90,7 @@ export default async function EmployeeLayout({
         </Link>
 
         <div className="hidden flex-col leading-tight md:flex">
-          <span className="label-eyebrow">Today</span>
+          <span className="label-eyebrow">{tMe("todayHeader")}</span>
           <time className="font-mono text-xs text-foreground/80">
             {todayLabel}
           </time>
@@ -105,7 +110,7 @@ export default async function EmployeeLayout({
               type="submit"
               className="rounded-sm border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              Sign out
+              {t("signOut")}
             </button>
           </form>
         </div>

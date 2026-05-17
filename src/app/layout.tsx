@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Public_Sans, IBM_Plex_Mono } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -40,20 +42,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${fraunces.variable} ${publicSans.variable} ${plexMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <TooltipProvider delayDuration={150}>{children}</TooltipProvider>
-        <Toaster position="top-right" />
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <TooltipProvider delayDuration={150}>{children}</TooltipProvider>
+          <Toaster position="top-right" />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

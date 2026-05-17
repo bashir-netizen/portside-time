@@ -1,0 +1,276 @@
+{
+  "common": {
+    "appName": "Portside Time",
+    "signOut": "Sign out",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "save": "Save",
+    "saving": "Saving…",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "change": "Change",
+    "cancel": "Cancel",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "language": "Language"
+  },
+  "nav": {
+    "today": "Today",
+    "schedule": "Schedule",
+    "leave": "Leave",
+    "justify": "Justify",
+    "pay": "Pay",
+    "profile": "Profile"
+  },
+  "login": {
+    "tagline": "Sign in · attendance ledger",
+    "tabEmployee": "Employee",
+    "tabAdmin": "Admin",
+    "onOffice": "On the office network",
+    "offEmployeeTitle": "You're not on the office network",
+    "offEmployeeBody": "Employees can only punch in from the office Wi-Fi. Your IP will be recorded and sent to your manager for approval — ask them to add it before trying again.",
+    "offAdminLabel": "Off-office admin sign-in",
+    "devBypass": "dev · office gates bypassed (DEV_BYPASS_OFFICE_GATES=1)",
+    "tabAriaLabel": "Sign-in mode",
+    "noEmployees": "No active employees yet. Ask the admin to create one.",
+    "pin": "PIN",
+    "pinPlaceholder": "••••••",
+    "selectEmployee": "Pick your name from the list",
+    "adminEmail": "Email",
+    "adminPassword": "Password"
+  },
+  "me": {
+    "title": "Today — Portside Time",
+    "greetingMorning": "Good morning",
+    "greetingAfternoon": "Good afternoon",
+    "greetingEvening": "Good evening",
+    "todayHeader": "Today",
+    "scheduleHeader": "Schedule",
+    "recentHeader": "Recent",
+    "viewWeek": "View week",
+    "noShiftToday": "No shift scheduled for today.",
+    "dayOffTitle": "Enjoy your day off",
+    "dayOffBody": "No punches expected today.",
+    "justifyBannerCount": "{count, plural, one {# incident to justify} other {# incidents to justify}}",
+    "justifyBannerBody": "Explain what happened before the window closes — tap to open.",
+    "scheduleStart": "Start",
+    "scheduleEnd": "End",
+    "scheduleLunchOut": "Lunch out",
+    "scheduleLunchIn": "Lunch in",
+    "scheduleLunchOnSite": "Lunch on-site",
+    "scheduleLunchOnSiteWithMins": "Lunch · {minutes}m on-site",
+    "status": {
+      "dayOff": "Day off",
+      "notStarted": "Not started",
+      "working": "Working",
+      "onLunch": "On lunch",
+      "backFromLunch": "Working",
+      "finished": "Finished"
+    },
+    "dayPattern": {
+      "split_day": "Split day",
+      "continuous_day": "Continuous · lunch on-site",
+      "half_day": "Half day",
+      "day_off": "Day off"
+    }
+  },
+  "punchTypes": {
+    "shift_in": "Shift in",
+    "lunch_out": "Lunch out",
+    "lunch_in": "Lunch in",
+    "shift_out": "Shift out"
+  },
+  "punchButton": {
+    "shift_in": "Punch in",
+    "lunch_out": "Lunch out",
+    "lunch_in": "Lunch in",
+    "shift_out": "Punch out",
+    "loading": "Loading…",
+    "noNext": "Today's shift is complete",
+    "pending": "Punching…",
+    "preparing": "Preparing…",
+    "recording": "Recording…",
+    "recorded": "{label} recorded",
+    "loadingNext": "Loading next step…",
+    "fingerprintUnavailable": "Fingerprint unavailable — punching in dev-bypass mode.",
+    "errors": {
+      "no_session": "Please sign in again.",
+      "wrong_role": "Only employees can punch.",
+      "ip": "Access denied.",
+      "device": "Access denied.",
+      "fingerprint_mismatch": "This browser doesn't match the approved device.",
+      "sequence": "That punch isn't the expected next step.",
+      "bad_request": "Bad request."
+    }
+  },
+  "ribbon": {
+    "done": "Done",
+    "next": "Next",
+    "pending": "Pending",
+    "steps": {
+      "shift_in": {
+        "label": "Start of shift",
+        "eyebrow": "Arrival"
+      },
+      "lunch_out": {
+        "label": "Lunch out",
+        "eyebrow": "Break begins"
+      },
+      "lunch_in": {
+        "label": "Back from lunch",
+        "eyebrow": "Break ends"
+      },
+      "shift_out": {
+        "label": "End of shift",
+        "eyebrow": "Departure"
+      }
+    }
+  },
+  "schedule": {
+    "title": "My schedule",
+    "thisWeek": "This week",
+    "subtitle": "Week of {weekLabel}",
+    "todayBadge": "Today",
+    "templateLabel": "Template: {name}",
+    "noTemplate": "No schedule template assigned. Contact your manager.",
+    "noTemplateAdminHint": "This employee has no schedule template assigned. Showing default split-day pattern. Admin can assign one at {path}.",
+    "back": "Back",
+    "busyDayExt": "Busy day: end extended to {time} · per diem owed"
+  },
+  "leave": {
+    "title": "Leave",
+    "subtitle": "Requests, balances, statuses",
+    "balanceAccrued": "Accrued",
+    "balanceUsed": "Used",
+    "balanceRemaining": "Remaining",
+    "pendingCount": "{count, plural, =0 {No pending requests} one {# pending request} other {# pending requests}}",
+    "newRequest": "New request",
+    "formLeaveType": "Leave type",
+    "formStartDate": "Start date",
+    "formEndDate": "End date",
+    "formNotes": "Notes (optional)",
+    "formSubmit": "Submit request",
+    "formSubmitting": "Submitting…",
+    "formSuccess": "Request submitted. You'll get a decision shortly.",
+    "historyHeader": "Request history",
+    "emptyHistory": "No requests yet.",
+    "leaveTypes": {
+      "annual": "Annual leave",
+      "sick": "Sick leave",
+      "maternity": "Maternity leave",
+      "paternity": "Paternity leave",
+      "bereavement": "Bereavement",
+      "marriage": "Marriage",
+      "unpaid": "Unpaid leave"
+    },
+    "statuses": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled",
+      "pending_certificate": "Certificate pending",
+      "certified_sick": "Certified sick",
+      "unauthorized": "Unauthorized absence"
+    }
+  },
+  "justify": {
+    "title": "Justify a late incident",
+    "crumb": "Justify",
+    "intro": "When a punch lands late (or you leave early), the system flags it here. You have {hours}h to explain — after that it auto-flips to unjustified and may count toward the disciplinary threshold.",
+    "allClearTitle": "Nothing to justify — you're all clear.",
+    "allClearBody": "Keep punching on time. If something comes up, this page is where you'll handle it.",
+    "sectionOpen": "Needs your justification",
+    "sectionSubmitted": "Submitted — awaiting decision",
+    "sectionHistory": "History",
+    "form": {
+      "reasonLabel": "Reason — {hours}h left to submit",
+      "reasonPlaceholder": "Explain what happened. Be specific — \"traffic\" is too vague.",
+      "submit": "Submit justification",
+      "submitting": "Submitting…",
+      "successTitle": "Submitted. The admin will review and decide.",
+      "errors": {
+        "no_session": "Please sign in again.",
+        "missing": "Missing incident id.",
+        "tooShort": "Reason must be at least 3 characters.",
+        "tooLong": "Reason is too long (max 2000 characters).",
+        "notFound": "Incident not found.",
+        "notOpen": "This incident is no longer open for justification."
+      }
+    },
+    "kinds": {
+      "late_arrival": "Late arrival",
+      "early_leave": "Left early",
+      "missed_punch_out": "Missed punch-out"
+    },
+    "statuses": {
+      "pending_justification": "Awaiting your reason",
+      "submitted": "Submitted — awaiting decision",
+      "justified": "Justified",
+      "manager_unjustified": "Rejected by admin",
+      "auto_unjustified": "Auto — window elapsed"
+    },
+    "minutesLabel": "{minutes} min",
+    "recordedAt": "recorded at {time}",
+    "adminPrefix": "Admin:"
+  },
+  "pay": {
+    "title": "Pay & Leave",
+    "crumb": "Pay & Leave",
+    "intro": "What you've earned, what you've taken. Payroll runs externally — these numbers are information only, not a sanction or an entitlement notice.",
+    "monthlySalary": "Monthly salary",
+    "annualLeaveRemaining": "Annual leave remaining",
+    "tenureYearsMonths": "{years}y {months}mo",
+    "tenureMonths": "{months, plural, one {# month} other {# months}}",
+    "tenureSuffix": "at Portside",
+    "secondarySalary": "{position} · {tenure} at Portside",
+    "secondaryLeave": "Accrued {accrued} · Used {used}",
+    "daysSuffix": "{count, plural, one {# day} other {# days}}",
+    "daysAbbrev": "{count}d",
+    "liveLock": "Live · locks at month end",
+    "stats": {
+      "daysWorked": "Days worked",
+      "lateIncidents": "Late incidents",
+      "perDiem": "Per-diem accrued",
+      "leaveTaken": "Leave taken",
+      "perDiemHint": "Awaits busy-day module",
+      "leaveTakenHint": "Annual only"
+    },
+    "rules": {
+      "header": "How these numbers work",
+      "salaryTitle": "Salary",
+      "salaryBody": "Fixed monthly, paid externally. Days not worked are not paid (rémunération calculée sur le temps effectivement travaillé). Not a sanction — just no pay for time not on the clock.",
+      "leaveTitle": "Annual leave",
+      "leaveBody": "2.5 days per completed month of service (Article 99 of the Code du Travail djiboutien). Approved annual leave is deducted; sick / maternity / family-event leave is not.",
+      "perDiemTitle": "Per diem",
+      "perDiemBody": "Owed on busy days when continuous-day employees take lunch on site (work past the normal end). Tracking lands when the busy-day workflow ships.",
+      "lateTitle": "Late incidents",
+      "lateBody": "Recorded when you punch after the grace period (default 15 min). Justification flow lets you submit a reason within 48h.",
+      "soon": "Soon"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "crumb": "Profile",
+    "active": "Active",
+    "inactive": "Inactive",
+    "position": "Position",
+    "joinedOn": "Joined Portside",
+    "defaultSchedule": "Default schedule",
+    "scheduleHint": "Editable by admin only",
+    "unassignedSchedule": "Unassigned",
+    "accountHeader": "Account",
+    "changePinLabel": "Change PIN",
+    "changePinHint": "Ask the admin to reset your PIN — self-service is coming in a future update.",
+    "languageLabel": "Language",
+    "languageHint": "Choose your interface language. The change is immediate.",
+    "notificationsLabel": "Notifications",
+    "notificationsHint": "Push + email preferences arrive in a later update.",
+    "edit": "Edit",
+    "soon": "Soon",
+    "footerLabel": "portside time · personnel sheet",
+    "footerHint": "your data lives on the office server · ask admin to review"
+  },
+  "offOffice": {
+    "banner": "You're outside the office network"
+  }
+}

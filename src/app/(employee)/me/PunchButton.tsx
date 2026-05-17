@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { punchAction } from "./actions";
-import { PUNCH_LABELS, type PunchType } from "@/lib/punch/types";
+import { type PunchType } from "@/lib/punch/types";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -21,6 +22,8 @@ type Props = {
  */
 export function PunchButton({ nextPunch }: Props) {
   const router = useRouter();
+  const t = useTranslations("punchButton");
+  const tPunch = useTranslations("punchTypes");
   const [visitorId, setVisitorId] = useState<string | null>(null);
   const [fpError, setFpError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +61,8 @@ export function PunchButton({ nextPunch }: Props) {
           strokeWidth={1.75}
         />
         <p className="mt-3 font-display text-xl text-foreground">
-          Today's shift is complete.
+          {t("noNext")}
         </p>
-        <p className="mt-1 label-eyebrow">See you tomorrow</p>
       </div>
     );
   }
@@ -78,9 +80,9 @@ export function PunchButton({ nextPunch }: Props) {
           strokeWidth={1.75}
         />
         <p className="mt-3 font-display text-xl text-foreground">
-          {PUNCH_LABELS[justRecorded]} recorded
+          {t("recorded", { label: tPunch(justRecorded) })}
         </p>
-        <p className="mt-1 label-eyebrow">Loading next step…</p>
+        <p className="mt-1 label-eyebrow">{t("loadingNext")}</p>
       </div>
     );
   }
@@ -109,7 +111,7 @@ export function PunchButton({ nextPunch }: Props) {
     });
   }
 
-  const label = nextPunch ? PUNCH_LABELS[nextPunch] : "—";
+  const label = nextPunch ? t(nextPunch) : "—";
 
   return (
     <div className="flex flex-col gap-3">
@@ -128,11 +130,11 @@ export function PunchButton({ nextPunch }: Props) {
         {pending ? (
           <>
             <Loader2 className="h-5 w-5 animate-spin" strokeWidth={2} />
-            <span>Recording…</span>
+            <span>{t("recording")}</span>
           </>
         ) : !visitorId && !fpError ? (
           <span className="text-sm font-mono uppercase tracking-wider">
-            Preparing…
+            {t("preparing")}
           </span>
         ) : (
           <>
@@ -147,7 +149,7 @@ export function PunchButton({ nextPunch }: Props) {
 
       {fpError ? (
         <p role="alert" className="text-xs text-muted-foreground">
-          Fingerprint unavailable — punching in dev-bypass mode.
+          {t("fingerprintUnavailable")}
         </p>
       ) : null}
       {error ? (

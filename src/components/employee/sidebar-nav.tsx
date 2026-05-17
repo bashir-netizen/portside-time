@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { EMPLOYEE_NAV, isActiveItem } from "./employee-nav";
 import { cn } from "@/lib/utils";
 
 export function EmployeeSidebarNav() {
   const pathname = usePathname() ?? "";
+  const t = useTranslations("nav");
 
   return (
     <nav aria-label="Employee navigation" className="flex flex-col gap-1 px-3">
@@ -39,7 +41,7 @@ export function EmployeeSidebarNav() {
               )}
               strokeWidth={active ? 2.25 : 1.75}
             />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </Link>
         );
       })}

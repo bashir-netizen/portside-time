@@ -9,16 +9,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
+import { getLocale, getTranslations } from "next-intl/server";
 import { readSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { accruedDaysSinceHire } from "@/lib/leave/accrual";
 import { getCompanyConfig } from "@/lib/config";
+import { dateLocaleFor } from "@/i18n/date";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-export const metadata = {
-  title: "Pay & Leave — Portside Time",
-};
+export async function generateMetadata() {
+  const t = await getTranslations("pay");
+  const tCommon = await getTranslations("common");
+  return { title: `${t("title")} — ${tCommon("appName")}` };
+}
 
 const TZ = "Africa/Djibouti";
 
@@ -71,34 +75,39 @@ export default async function PayPage() {
     punchesThisMonth.map((p) => formatInTimeZone(p.punchedAt, TZ, "yyyy-MM-dd"))
   ).size;
 
+  const [t, tCommon, locale] = await Promise.all([
+    getTranslations("pay"),
+    getTranslations("common"),
+    getLocale(),
+  ]);
+  const dateLocale = dateLocaleFor(locale as "fr" | "en");
+
   // Tenure
   const hireMonths = monthsBetween(employee.hireDate, now);
   const hireYears = Math.floor(hireMonths / 12);
   const hireMonthsRem = hireMonths % 12;
   const tenureLabel =
     hireYears > 0
-      ? `${hireYears}y ${hireMonthsRem}mo`
-      : `${hireMonthsRem} month${hireMonthsRem === 1 ? "" : "s"}`;
+      ? t("tenureYearsMonths", { years: hireYears, months: hireMonthsRem })
+      : t("tenureMonths", { months: hireMonthsRem });
 
-  const monthLabel = formatInTimeZone(now, TZ, "LLLL yyyy");
+  const monthLabel = formatInTimeZone(now, TZ, "LLLL yyyy", { locale: dateLocale });
 
   return (
     <div className="flex flex-col gap-7">
       <header className="flex flex-col gap-1">
         <div className="label-eyebrow flex items-center gap-1.5">
           <Link href="/me" className="hover:text-foreground">
-            Today
+            {tCommon("today")}
           </Link>
           <ChevronRight className="h-3 w-3" aria-hidden />
-          <span>Pay &amp; Leave</span>
+          <span>{t("crumb")}</span>
         </div>
         <h1 className="font-display text-3xl tracking-tight md:text-4xl">
-          Pay &amp; Leave
+          {t("title")}
         </h1>
         <p className="max-w-prose text-sm text-muted-foreground">
-          What you've earned, what you've taken. Payroll runs externally — these
-          numbers are information only, not a sanction or an entitlement
-          notice.
+          {t("intro")}
         </p>
       </header>
 
@@ -107,22 +116,28 @@ export default async function PayPage() {
       {/* Two hero cards: monthly salary + remaining annual leave */}
       <section className="grid gap-4 md:grid-cols-2">
         <HeroCard
-          eyebrow="Monthly salary"
+          eyebrow={t("monthlySalary")}
           icon={Wallet}
           primary={DJF.format(employee.monthlySalary)}
-          secondary={`${employee.position} · ${tenureLabel} at Portside`}
+          secondary={t("secondarySalary", {
+            position: employee.position,
+            tenure: tenureLabel,
+          })}
         />
         <HeroCard
-          eyebrow="Annual leave remaining"
+          eyebrow={t("annualLeaveRemaining")}
           icon={Plane}
-          primary={`${remainingAnnual.toFixed(1)} days`}
-          secondary={`Accrued ${accrued.toFixed(1)} · Used ${usedAnnual.toFixed(1)}`}
+          primary={t("daysSuffix", { count: Number(remainingAnnual.toFixed(1)) })}
+          secondary={t("secondaryLeave", {
+            accrued: accrued.toFixed(1),
+            used: usedAnnual.toFixed(1),
+          })}
           accent="success"
         />
       </section>
 
       {/* This-month-so-far */}
-      <section aria-label="This month so far" className="flex flex-col gap-3">
+      <section aria-label={monthLabel} className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
           <h2 className="font-display text-2xl tracking-tight">
             {monthLabel}
@@ -131,34 +146,33 @@ export default async function PayPage() {
             variant="outline"
             className="font-mono text-[10px] uppercase tracking-wider"
           >
-            Live · locks at month end
+            {t("liveLock")}
           </Badge>
         </div>
         <Card className="bg-card p-0">
           <div className="grid grid-cols-2 divide-y divide-border md:grid-cols-4 md:divide-x md:divide-y-0">
             <Stat
               icon={CalendarCheck}
-              eyebrow="Days worked"
+              eyebrow={t("stats.daysWorked")}
               value={String(daysWorkedThisMonth)}
             />
             <Stat
               icon={Briefcase}
-              eyebrow="Late incidents"
+              eyebrow={t("stats.lateIncidents")}
               value="0"
-              hint="Pending lateness flow"
             />
             <Stat
               icon={Coins}
-              eyebrow="Per-diem accrued"
+              eyebrow={t("stats.perDiem")}
               value="—"
-              hint="Awaits busy-day spec"
+              hint={t("stats.perDiemHint")}
               dim
             />
             <Stat
               icon={Plane}
-              eyebrow="Leave taken"
-              value={`${usedAnnual.toFixed(1)}d`}
-              hint="Annual only"
+              eyebrow={t("stats.leaveTaken")}
+              value={t("daysAbbrev", { count: usedAnnual.toFixed(1) })}
+              hint={t("stats.leaveTakenHint")}
             />
           </div>
         </Card>
@@ -166,25 +180,28 @@ export default async function PayPage() {
 
       {/* Why each number — small compliance footnote */}
       <section className="flex flex-col gap-3">
-        <h2 className="label-eyebrow">How these numbers work</h2>
+        <h2 className="label-eyebrow">{t("rules.header")}</h2>
         <div className="grid gap-3 md:grid-cols-2">
           <RuleCard
-            title="Salary"
-            body="Fixed monthly, paid externally. Days not worked are not paid (rémunération calculée sur le temps effectivement travaillé). Not a sanction — just no pay for time not on the clock."
+            title={t("rules.salaryTitle")}
+            body={t("rules.salaryBody")}
+            soonLabel={t("rules.soon")}
           />
           <RuleCard
-            title="Annual leave"
-            body="2.5 days per completed month of service (Article 99 du Code du Travail djiboutien). Approved annual leave is deducted; sick / maternity / family-event leave is not."
+            title={t("rules.leaveTitle")}
+            body={t("rules.leaveBody")}
+            soonLabel={t("rules.soon")}
           />
           <RuleCard
-            title="Per diem"
-            body="Owed on busy days when continuous-day employees take lunch on site (work past the normal end). Tracking lands when the busy-day workflow ships."
+            title={t("rules.perDiemTitle")}
+            body={t("rules.perDiemBody")}
+            soonLabel={t("rules.soon")}
             soon
           />
           <RuleCard
-            title="Late incidents"
-            body="Recorded when you punch after the grace period (default 15 min). Justification flow lets you submit a reason within 48h. UI lands in the lateness PR."
-            soon
+            title={t("rules.lateTitle")}
+            body={t("rules.lateBody")}
+            soonLabel={t("rules.soon")}
           />
         </div>
       </section>
@@ -260,10 +277,12 @@ function RuleCard({
   title,
   body,
   soon = false,
+  soonLabel,
 }: {
   title: string;
   body: string;
   soon?: boolean;
+  soonLabel: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5 rounded-sm border border-border bg-card p-4">
@@ -274,7 +293,7 @@ function RuleCard({
             variant="outline"
             className="font-mono text-[9px] uppercase tracking-wider"
           >
-            Soon
+            {soonLabel}
           </Badge>
         ) : null}
       </div>
