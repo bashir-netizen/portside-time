@@ -1,8 +1,19 @@
 "use client";
 
 import { useActionState } from "react";
+import { Save, CalendarDays, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-type Schedule = { id: string; label: string };
+type Template = { id: string; name: string; description: string | null };
 
 type Result =
   | { ok: true }
@@ -12,16 +23,17 @@ type Action = (prev: Result | null, fd: FormData) => Promise<Result>;
 
 export function EmployeeEditForm({
   initial,
-  schedules,
+  templates,
   action,
 }: {
   initial: {
     fullName: string;
     position: string;
     monthlySalary: number;
-    defaultScheduleId: string;
+    hireDate: string; // YYYY-MM-DD
+    defaultScheduleTemplateId: string;
   };
-  schedules: Schedule[];
+  templates: Template[];
   action: Action;
 }) {
   const [state, formAction, pending] = useActionState<Result | null, FormData>(
@@ -29,42 +41,105 @@ export function EmployeeEditForm({
     null,
   );
 
+  const fieldErrors =
+    state && !state.ok && state.fieldErrors ? state.fieldErrors : undefined;
+
   return (
-    <form action={formAction} className="flex flex-col gap-4">
-      <Field label="Full name" name="fullName" defaultValue={initial.fullName} />
-      <Field label="Position" name="position" defaultValue={initial.position} />
-      <Field
-        label="Monthly salary (DJF)"
-        name="monthlySalary"
-        type="number"
-        defaultValue={String(initial.monthlySalary)}
-      />
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium">Default schedule</span>
-        <select
-          name="defaultScheduleId"
-          defaultValue={initial.defaultScheduleId}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+    <form action={formAction} className="flex flex-col gap-5">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field
+          label="Full name"
+          name="fullName"
+          defaultValue={initial.fullName}
+          errors={fieldErrors?.fullName}
+        />
+        <Field
+          label="Position"
+          name="position"
+          defaultValue={initial.position}
+          errors={fieldErrors?.position}
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field
+          label="Monthly salary (DJF)"
+          name="monthlySalary"
+          type="number"
+          mono
+          defaultValue={String(initial.monthlySalary)}
+          errors={fieldErrors?.monthlySalary}
+        />
+        <Field
+          label="Hire date"
+          name="hireDate"
+          type="date"
+          mono
+          defaultValue={initial.hireDate}
+          errors={fieldErrors?.hireDate}
+          hint="Drives Article 99 leave accrual (2.5 days / month from this date)."
+          icon={CalendarDays}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="defaultScheduleTemplateId">Schedule template</Label>
+        <Select
+          name="defaultScheduleTemplateId"
+          defaultValue={initial.defaultScheduleTemplateId}
+          required
         >
-          {schedules.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      {state && !state.ok && (
-        <p role="alert" className="text-sm text-red-600">
-          {state.error}
+          <SelectTrigger id="defaultScheduleTemplateId" className="bg-card">
+            <SelectValue placeholder="Pick a template" />
+          </SelectTrigger>
+          <SelectContent>
+            {templates.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground">
+          Drives the punch sequence: split-day (4 punches), continuous-day
+          (4 punches, lunch on site), half-day (2 punches), or day-off
+          (punching blocked) per spec §5.3.
         </p>
-      )}
-      <button
+        {fieldErrors?.defaultScheduleTemplateId ? (
+          <p className="text-xs text-destructive">
+            {fieldErrors.defaultScheduleTemplateId[0]}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="flex items-start gap-2 rounded-sm border border-[var(--brass)]/30 bg-[var(--brass)]/8 px-3 py-2 text-xs">
+        <Info
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--brass)]"
+          strokeWidth={1.75}
+        />
+        <span className="text-muted-foreground">
+          Changes are audit-logged with before/after snapshots. Editing the
+          hire date adjusts the accrued-leave calculation immediately.
+        </span>
+      </div>
+
+      {state && !state.ok ? (
+        <div
+          role="alert"
+          className="rounded-sm border border-destructive/40 bg-destructive/8 px-3 py-2 text-sm text-destructive"
+        >
+          {state.error}
+        </div>
+      ) : null}
+
+      <Button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+        className="gap-1.5 self-start"
       >
+        <Save className="h-4 w-4" />
         {pending ? "Saving…" : "Save changes"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -74,22 +149,40 @@ function Field({
   name,
   type = "text",
   defaultValue,
+  errors,
+  hint,
+  mono = false,
+  icon: Icon,
 }: {
   label: string;
   name: string;
   type?: string;
   defaultValue?: string;
+  errors?: string[];
+  hint?: string;
+  mono?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-sm font-medium">{label}</span>
-      <input
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={name} className="flex items-center gap-1.5">
+        {Icon ? <Icon className="h-3.5 w-3.5 text-muted-foreground" /> : null}
+        {label}
+      </Label>
+      <Input
+        id={name}
         name={name}
         type={type}
         defaultValue={defaultValue}
         required
-        className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+        className={`bg-card ${mono ? "font-mono tabular-nums" : ""}`}
       />
-    </label>
+      {hint ? (
+        <p className="text-[10px] text-muted-foreground">{hint}</p>
+      ) : null}
+      {errors && errors.length > 0 ? (
+        <p className="text-xs text-destructive">{errors[0]}</p>
+      ) : null}
+    </div>
   );
 }

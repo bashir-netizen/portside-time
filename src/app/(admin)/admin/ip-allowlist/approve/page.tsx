@@ -1,8 +1,16 @@
 import Link from "next/link";
+import { AlertCircle, Info, ShieldCheck, ArrowRight } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
 import { db } from "@/lib/db";
 import { verifyApprovalToken } from "@/lib/tokens";
-import { formatDateTime } from "@/lib/time";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { ApproveFromTokenForm } from "./ApproveFromTokenForm";
+
+export const metadata = { title: "Approve IP — Portside Time" };
+
+const TZ = "Africa/Djibouti";
 
 export default async function ApproveIpFromTokenPage({
   searchParams,
@@ -29,7 +37,7 @@ export default async function ApproveIpFromTokenPage({
         body={
           v.reason === "expired"
             ? "This link has expired. Trigger a new login attempt from the office to get a fresh one."
-            : "The link is malformed or tampered with."
+            : "The link is malformed or has been tampered with."
         }
       />
     );
@@ -43,7 +51,7 @@ export default async function ApproveIpFromTokenPage({
       <Notice
         kind="error"
         title="Detection not found"
-        body="This detection no longer exists."
+        body="This detection no longer exists in the database."
       />
     );
   }
@@ -53,37 +61,91 @@ export default async function ApproveIpFromTokenPage({
         kind="info"
         title="Already resolved"
         body={
-          <span>
+          <>
             This detection has been{" "}
-            <span className="font-medium">{pending.status}</span> already.
-          </span>
+            <span className="font-mono text-foreground">{pending.status}</span>{" "}
+            already.
+          </>
         }
       />
     );
   }
 
   return (
-    <div className="flex max-w-md flex-col gap-4">
+    <div className="flex max-w-xl flex-col gap-7">
       <header>
-        <h1 className="text-xl font-semibold">Approve new office IP</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          A login attempt from the office hit an IP that isn't allowlisted.
-          Confirm to allow it.
+        <div className="label-eyebrow flex items-center gap-1.5">
+          <ShieldCheck className="h-3 w-3 text-[var(--brass)]" />
+          Email approval link
+        </div>
+        <h1 className="mt-1 font-display text-4xl tracking-tight md:text-5xl">
+          Approve new office IP
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          A login attempt from the office hit an IP that isn't on the
+          allowlist. Confirm to add it so employees can sign in.
         </p>
       </header>
 
-      <dl className="grid grid-cols-3 gap-y-2 rounded-md bg-zinc-50 px-4 py-3 text-sm dark:bg-zinc-900">
-        <dt className="col-span-1 text-zinc-500">IP</dt>
-        <dd className="col-span-2 font-mono">{pending.ipAddress}</dd>
-        <dt className="col-span-1 text-zinc-500">First seen</dt>
-        <dd className="col-span-2">{formatDateTime(pending.firstSeenAt)}</dd>
-        <dt className="col-span-1 text-zinc-500">Last seen</dt>
-        <dd className="col-span-2">{formatDateTime(pending.lastSeenAt)}</dd>
-        <dt className="col-span-1 text-zinc-500">Observations</dt>
-        <dd className="col-span-2">{pending.observationCount}</dd>
-      </dl>
+      <div className="rule-double" aria-hidden />
+
+      <Card className="bg-card p-0">
+        <div className="flex flex-col gap-px">
+          <Row label="IP address" value={pending.ipAddress} mono />
+          <Separator />
+          <Row
+            label="First seen"
+            value={formatInTimeZone(pending.firstSeenAt, TZ, "EEEE d LLL · HH:mm")}
+            mono
+          />
+          <Separator />
+          <Row
+            label="Last seen"
+            value={formatInTimeZone(pending.lastSeenAt, TZ, "EEEE d LLL · HH:mm")}
+            mono
+          />
+          <Separator />
+          <Row
+            label="Observations"
+            value={String(pending.observationCount)}
+            mono
+            badge={
+              <Badge
+                variant="outline"
+                className="font-mono text-[10px] uppercase tracking-wider"
+              >
+                attempts so far
+              </Badge>
+            }
+          />
+        </div>
+      </Card>
 
       <ApproveFromTokenForm token={token} />
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  mono = false,
+  badge,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  badge?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-5 py-3">
+      <span className="label-eyebrow flex-1">{label}</span>
+      <span
+        className={`text-sm ${mono ? "font-mono tabular-nums" : ""} text-foreground`}
+      >
+        {value}
+      </span>
+      {badge}
     </div>
   );
 }
@@ -97,19 +159,36 @@ function Notice({
   title: string;
   body: React.ReactNode;
 }) {
-  const bg =
-    kind === "error"
-      ? "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950"
-      : "border-zinc-300 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900";
+  const isError = kind === "error";
+  const Icon = isError ? AlertCircle : Info;
   return (
-    <div className={`max-w-md rounded-md border p-4 ${bg}`}>
-      <h2 className="text-base font-semibold">{title}</h2>
-      <p className="mt-1 text-sm">{body}</p>
+    <div className="flex max-w-xl flex-col gap-4">
+      <Card
+        className={
+          isError
+            ? "border-destructive/40 bg-destructive/8 p-5"
+            : "bg-card p-5"
+        }
+      >
+        <div className="flex items-start gap-3">
+          <Icon
+            className={`mt-0.5 h-5 w-5 shrink-0 ${
+              isError ? "text-destructive" : "text-[var(--brass)]"
+            }`}
+            strokeWidth={1.75}
+          />
+          <div className="flex flex-col gap-1">
+            <h2 className="font-display text-xl">{title}</h2>
+            <p className="text-sm text-muted-foreground">{body}</p>
+          </div>
+        </div>
+      </Card>
       <Link
         href="/admin/ip-allowlist"
-        className="mt-3 inline-block text-sm font-medium underline-offset-2 hover:underline"
+        className="inline-flex items-center gap-1 text-sm font-medium hover:underline-brass"
       >
-        Go to IP allowlist →
+        Go to IP allowlist
+        <ArrowRight className="h-4 w-4" />
       </Link>
     </div>
   );

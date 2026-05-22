@@ -28,7 +28,7 @@ export async function createEmployeeAction(
     position: formData.get("position"),
     monthlySalary: formData.get("monthlySalary"),
     hireDate: formData.get("hireDate"),
-    defaultScheduleId: formData.get("defaultScheduleId"),
+    defaultScheduleTemplateId: formData.get("defaultScheduleTemplateId"),
   });
   if (!parsed.success) {
     return {
@@ -47,7 +47,7 @@ export async function createEmployeeAction(
       position: parsed.data.position,
       monthlySalary: parsed.data.monthlySalary,
       hireDate: parseYmdInDjibouti(parsed.data.hireDate),
-      defaultScheduleId: parsed.data.defaultScheduleId,
+      defaultScheduleTemplateId: parsed.data.defaultScheduleTemplateId,
       pinHash,
       status: "active",
     },
@@ -81,7 +81,8 @@ export async function updateEmployeeAction(
     fullName: formData.get("fullName"),
     position: formData.get("position"),
     monthlySalary: formData.get("monthlySalary"),
-    defaultScheduleId: formData.get("defaultScheduleId"),
+    hireDate: formData.get("hireDate"),
+    defaultScheduleTemplateId: formData.get("defaultScheduleTemplateId"),
   });
   if (!parsed.success) {
     return {
@@ -94,9 +95,17 @@ export async function updateEmployeeAction(
   const before = await db.employee.findUnique({ where: { id: employeeId } });
   if (!before) return { ok: false, error: "Employee not found." };
 
+  // hireDate arrives as a YYYY-MM-DD string from the form; convert to the
+  // Djibouti start-of-day UTC Date that the schema stores.
   const after = await db.employee.update({
     where: { id: employeeId },
-    data: parsed.data,
+    data: {
+      fullName: parsed.data.fullName,
+      position: parsed.data.position,
+      monthlySalary: parsed.data.monthlySalary,
+      hireDate: parseYmdInDjibouti(parsed.data.hireDate),
+      defaultScheduleTemplateId: parsed.data.defaultScheduleTemplateId,
+    },
   });
   await audit({
     actor: { type: "user", id: ctx.session.userId! },

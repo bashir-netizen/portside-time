@@ -1,81 +1,117 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
+import { CheckCircle2, Send } from "lucide-react";
 import { requestLeaveAction } from "./actions";
-import { LEAVE_TYPES, LEAVE_TYPE_LABELS } from "@/schemas/leave";
+import { LEAVE_TYPES, type LeaveType } from "@/schemas/leave";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Result = { ok: boolean; error?: string } | null;
 
 export function RequestLeaveForm() {
+  const t = useTranslations("leave");
   const [state, action, pending] = useActionState<Result, FormData>(
     requestLeaveAction,
-    null,
+    null
   );
 
   if (state?.ok) {
     return (
-      <div className="rounded-md border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-900 dark:bg-emerald-950">
-        Request submitted. The admin will be notified.
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-start gap-3 rounded-sm border border-[var(--success)]/40 bg-[var(--success)]/8 px-4 py-4"
+      >
+        <CheckCircle2
+          className="mt-0.5 h-5 w-5 shrink-0 text-[var(--success)]"
+          strokeWidth={1.75}
+        />
+        <div className="flex flex-col gap-1">
+          <p className="font-medium text-foreground">{t("formSuccess")}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <form action={action} className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="text-xs text-zinc-500">Type</span>
-        <select
-          name="leaveType"
-          required
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-        >
-          {LEAVE_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {LEAVE_TYPE_LABELS[t]}
-            </option>
-          ))}
-        </select>
-      </label>
+    <form action={action} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="leaveType">{t("formLeaveType")}</Label>
+        <Select name="leaveType" defaultValue="annual" required>
+          <SelectTrigger id="leaveType" className="bg-card">
+            <SelectValue placeholder={t("formLeaveType")} />
+          </SelectTrigger>
+          <SelectContent>
+            {LEAVE_TYPES.map((lt) => (
+              <SelectItem key={lt} value={lt}>
+                {t(`leaveTypes.${lt as LeaveType}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-zinc-500">From</span>
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="startDate">{t("formStartDate")}</Label>
+          <Input
+            id="startDate"
             name="startDate"
             type="date"
             required
-            className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className="bg-card font-mono"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-zinc-500">To</span>
-          <input
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="endDate">{t("formEndDate")}</Label>
+          <Input
+            id="endDate"
             name="endDate"
             type="date"
             required
-            className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className="bg-card font-mono"
           />
-        </label>
+        </div>
       </div>
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="text-xs text-zinc-500">Notes (optional)</span>
-        <textarea
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="notes">{t("formNotes")}</Label>
+        <Textarea
+          id="notes"
           name="notes"
-          rows={2}
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          rows={3}
+          className="bg-card"
         />
-      </label>
-      {state && !state.ok && state.error && (
-        <p role="alert" className="text-sm text-red-600">
+      </div>
+
+      {state && !state.ok && state.error ? (
+        <div
+          role="alert"
+          className="rounded-sm border border-destructive/40 bg-destructive/8 px-3 py-2 text-sm text-destructive"
+        >
           {state.error}
-        </p>
-      )}
-      <button
+        </div>
+      ) : null}
+
+      <Button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+        className="self-start gap-2 rounded-sm"
       >
-        {pending ? "Submitting…" : "Submit request"}
-      </button>
+        <Send className="h-4 w-4" />
+        {pending ? t("formSubmitting") : t("formSubmit")}
+      </Button>
     </form>
   );
 }

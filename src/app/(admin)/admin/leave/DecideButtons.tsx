@@ -1,6 +1,9 @@
 "use client";
 
 import { useTransition } from "react";
+import { Check, X, Stethoscope, ShieldOff } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   decideLeaveAction,
   markCertifiedSickAction,
@@ -19,30 +22,35 @@ export function DecideButtons({ request }: { request: Request }) {
   if (request.status === "pending_certificate") {
     return (
       <div className="flex flex-wrap gap-2">
-        <button
+        <Button
           type="button"
+          size="sm"
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
               await markCertifiedSickAction(request.id);
             })
           }
-          className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white"
+          className="gap-1.5 bg-[var(--success)] text-[var(--success-foreground)] hover:bg-[var(--success)]/90"
         >
-          {pending ? "…" : "Mark certified sick"}
-        </button>
-        <button
+          <Stethoscope className="h-3.5 w-3.5" />
+          {pending ? "Recording…" : "Mark certified sick"}
+        </Button>
+        <Button
           type="button"
+          size="sm"
+          variant="outline"
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
               await markUnauthorizedAction(request.id);
             })
           }
-          className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 dark:border-red-800 dark:text-red-300"
+          className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
+          <ShieldOff className="h-3.5 w-3.5" />
           {pending ? "…" : "Mark unauthorized"}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -57,29 +65,34 @@ export function DecideButtons({ request }: { request: Request }) {
         })
       }
     >
-      <input
+      <Input
         name="notes"
-        placeholder="Optional notes"
-        className="flex-1 rounded-md border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+        placeholder="Optional notes for the employee"
+        className="h-8 flex-1 bg-background text-xs"
       />
-      <button
+      <Button
         type="submit"
         name="decision"
         value="approved"
+        size="sm"
         disabled={pending}
-        className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white"
+        className="gap-1.5 bg-[var(--success)] text-[var(--success-foreground)] hover:bg-[var(--success)]/90"
       >
+        <Check className="h-3.5 w-3.5" />
         {pending ? "…" : "Approve"}
-      </button>
-      <button
+      </Button>
+      <Button
         type="submit"
         name="decision"
         value="rejected"
+        size="sm"
+        variant="outline"
         disabled={pending}
-        className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 dark:border-red-800 dark:text-red-300"
+        className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
       >
+        <X className="h-3.5 w-3.5" />
         {pending ? "…" : "Reject"}
-      </button>
+      </Button>
     </form>
   );
 }

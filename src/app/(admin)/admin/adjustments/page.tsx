@@ -1,7 +1,20 @@
+import { Wrench, PlusCircle, ChevronDown, History } from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
 import { db } from "@/lib/db";
-import { formatDate, formatDjf } from "@/lib/time";
 import { periodWindow } from "@/lib/reports/period";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { NewAdjustmentForm } from "./NewAdjustmentForm";
+
+export const metadata = { title: "Adjustments — Portside Time" };
+
+const TZ = "Africa/Djibouti";
+
+const DJF = new Intl.NumberFormat("fr-DJ", {
+  style: "currency",
+  currency: "DJF",
+  maximumFractionDigits: 0,
+});
 
 export default async function AdjustmentsPage() {
   const [employees, lockedPeriods, adjustments] = await Promise.all([
@@ -29,66 +42,100 @@ export default async function AdjustmentsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">Adjustments</h1>
+    <div className="flex flex-col gap-7">
+      <header className="flex flex-col gap-1">
+        <div className="label-eyebrow">Payroll · post-close corrections</div>
+        <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+          Adjustments
+        </h1>
+        <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+          For things that surface after a month is locked. The amount lands on
+          the <em>current</em> open period's report — the locked file is never
+          modified. Each adjustment is audit-logged with the reason.
+        </p>
+      </header>
 
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Use adjustments to correct things that surface after a month is locked.
-        The amount lands on the *current* open period's report. The locked file
-        is never modified.
-      </p>
+      <div className="rule-double" aria-hidden />
 
-      <details className="rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
-          Record an adjustment
-        </summary>
-        <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
-          <NewAdjustmentForm
-            employees={employees}
-            periods={periodOptions}
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-sm border border-border bg-card px-4 py-3 transition-colors hover:border-foreground/30">
+          <PlusCircle className="h-4 w-4 text-[var(--brass)]" />
+          <span className="text-sm font-medium">Record an adjustment</span>
+          <span className="ml-auto label-eyebrow">audit-logged</span>
+          <ChevronDown
+            className="ml-2 h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"
+            strokeWidth={1.75}
           />
-        </div>
+        </summary>
+        <Card className="mt-2 bg-card p-5">
+          <NewAdjustmentForm employees={employees} periods={periodOptions} />
+        </Card>
       </details>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">
-          Recent adjustments
-        </h2>
+      <section aria-label="Recent adjustments" className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <History className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-display text-2xl tracking-tight">
+            Recent adjustments
+          </h2>
+        </div>
+
         {adjustments.length === 0 ? (
-          <p className="rounded-md border border-dashed border-zinc-300 p-4 text-sm text-zinc-500 dark:border-zinc-800">
-            No adjustments yet.
-          </p>
+          <div className="rounded-sm border border-dashed border-border bg-muted/30 px-4 py-8 text-center">
+            <Wrench
+              className="mx-auto h-6 w-6 text-muted-foreground"
+              strokeWidth={1.5}
+            />
+            <p className="mt-2 text-sm text-muted-foreground">
+              No adjustments recorded yet.
+            </p>
+          </div>
         ) : (
-          <ul className="flex flex-col divide-y divide-zinc-200 rounded-md border border-zinc-200 bg-white text-sm dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
-            {adjustments.map((a) => (
-              <li key={a.id} className="flex flex-col gap-0.5 px-3 py-2">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-medium">
-                    {empById.get(a.employeeId) ?? a.employeeId.slice(0, 8)}
-                  </span>
-                  <span
-                    className={
-                      "tabular-nums " +
-                      (a.amountDjf >= 0
-                        ? "text-emerald-700 dark:text-emerald-300"
-                        : "text-red-700 dark:text-red-300")
-                    }
-                  >
-                    {a.amountDjf >= 0 ? "+" : "-"}{formatDjf(Math.abs(a.amountDjf))} DJF
-                  </span>
-                </div>
-                <span className="text-xs text-zinc-500">
-                  Applies to {formatDate(a.appliesToPeriodStart)} ·{" "}
-                  {a.appliedInPeriodStart
-                    ? `applied in ${formatDate(a.appliedInPeriodStart)}`
-                    : "not yet applied"}
-                </span>
-                <span className="text-xs italic text-zinc-700 dark:text-zinc-300">
-                  {a.reason}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <Card className="bg-card p-0">
+            <ul className="divide-y divide-border">
+              {adjustments.map((a) => {
+                const positive = a.amountDjf >= 0;
+                return (
+                  <li key={a.id} className="flex flex-col gap-2 px-5 py-3.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="font-medium">
+                        {empById.get(a.employeeId) ??
+                          a.employeeId.slice(0, 8)}
+                      </span>
+                      <span
+                        className={`font-mono text-sm font-semibold tabular-nums ${
+                          positive
+                            ? "text-[var(--success)]"
+                            : "text-destructive"
+                        }`}
+                      >
+                        {positive ? "+" : "−"}
+                        {DJF.format(Math.abs(a.amountDjf))}
+                      </span>
+                    </div>
+                    <Separator className="my-0" />
+                    <div className="flex flex-col gap-1">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Applies to{" "}
+                        {formatInTimeZone(
+                          a.appliesToPeriodStart,
+                          TZ,
+                          "LLLL yyyy"
+                        )}
+                        {" · "}
+                        {a.appliedInPeriodStart
+                          ? `applied in ${formatInTimeZone(a.appliedInPeriodStart, TZ, "LLLL yyyy")}`
+                          : "not yet applied"}
+                      </span>
+                      <p className="text-xs italic text-foreground/85">
+                        "{a.reason}"
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
         )}
       </section>
     </div>

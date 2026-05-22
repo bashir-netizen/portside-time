@@ -1,95 +1,211 @@
 import Link from "next/link";
+import { Plus, Users, ChevronRight } from "lucide-react";
 import { db } from "@/lib/db";
-import { formatDjf } from "@/lib/time";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+
+export const metadata = { title: "Employees — Portside Time" };
+
+const DJF = new Intl.NumberFormat("fr-DJ", {
+  style: "currency",
+  currency: "DJF",
+  maximumFractionDigits: 0,
+});
 
 export default async function EmployeesPage() {
   const employees = await db.employee.findMany({
     orderBy: [{ status: "asc" }, { fullName: "asc" }],
-    include: { defaultSchedule: true },
+    include: { defaultScheduleTemplate: true },
   });
 
+  const active = employees.filter((e) => e.status === "active").length;
+  const inactive = employees.length - active;
+
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Employees</h1>
-        <Link
-          href="/admin/employees/new"
-          className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          New employee
-        </Link>
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-1">
+        <div className="label-eyebrow">Roster</div>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+              Employees
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="font-mono tabular-nums">{active}</span> active
+              {inactive > 0 ? (
+                <>
+                  {" · "}
+                  <span className="font-mono tabular-nums">{inactive}</span>{" "}
+                  inactive
+                </>
+              ) : null}
+            </p>
+          </div>
+          <Button asChild className="gap-1.5">
+            <Link href="/admin/employees/new">
+              <Plus className="h-4 w-4" /> New employee
+            </Link>
+          </Button>
+        </div>
       </header>
 
-      <ul className="md:hidden flex flex-col gap-2">
-        {employees.map((e) => (
-          <li
-            key={e.id}
-            className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950"
-          >
-            <Link
-              href={`/admin/employees/${e.id}`}
-              className="flex flex-col gap-1"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{e.fullName}</span>
-                <StatusPill status={e.status} />
-              </div>
-              <span className="text-xs text-zinc-500">{e.position}</span>
-              <span className="text-xs text-zinc-500">
-                {e.defaultSchedule.label}
-                {" · "}
-                {formatDjf(e.monthlySalary)} DJF/mo
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <div className="rule-double" aria-hidden />
 
-      <div className="hidden md:block overflow-x-auto rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-        <table className="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
-          <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wider text-zinc-500 dark:bg-zinc-900">
-            <tr>
-              <th className="px-4 py-2">Name</th>
-              <th className="px-4 py-2">Position</th>
-              <th className="px-4 py-2">Schedule</th>
-              <th className="px-4 py-2 text-right">Salary (DJF)</th>
-              <th className="px-4 py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+      {employees.length === 0 ? (
+        <Card className="bg-card p-8 text-center">
+          <Users className="mx-auto h-8 w-8 text-muted-foreground" />
+          <p className="mt-3 font-display text-xl">No employees yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add the first one to start tracking attendance.
+          </p>
+          <Button asChild className="mt-4 gap-1.5">
+            <Link href="/admin/employees/new">
+              <Plus className="h-4 w-4" /> New employee
+            </Link>
+          </Button>
+        </Card>
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <ul className="flex flex-col gap-2 md:hidden">
             {employees.map((e) => (
-              <tr key={e.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                <td className="px-4 py-2 font-medium">
-                  <Link href={`/admin/employees/${e.id}`}>{e.fullName}</Link>
-                </td>
-                <td className="px-4 py-2">{e.position}</td>
-                <td className="px-4 py-2">{e.defaultSchedule.label}</td>
-                <td className="px-4 py-2 text-right tabular-nums">
-                  {formatDjf(e.monthlySalary)}
-                </td>
-                <td className="px-4 py-2">
-                  <StatusPill status={e.status} />
-                </td>
-              </tr>
+              <li key={e.id}>
+                <Link href={`/admin/employees/${e.id}`}>
+                  <Card
+                    className={cn(
+                      "bg-card p-4 transition-colors hover:border-[var(--brass)]/50",
+                      e.status !== "active" && "opacity-65"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span
+                        aria-hidden
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-background font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                      >
+                        {initialsOf(e.fullName)}
+                      </span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate font-medium">
+                            {e.fullName}
+                          </span>
+                          <StatusPill status={e.status} />
+                        </div>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {e.position}
+                        </span>
+                        <span className="mt-1.5 font-mono text-xs text-foreground/80 tabular-nums">
+                          {DJF.format(e.monthlySalary)} / mo ·{" "}
+                          {e.defaultScheduleTemplate?.name ?? "Unassigned"}
+                        </span>
+                      </div>
+                      <ChevronRight
+                        className="mt-1 h-4 w-4 shrink-0 text-muted-foreground"
+                        strokeWidth={1.75}
+                      />
+                    </div>
+                  </Card>
+                </Link>
+              </li>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+
+          {/* Desktop table */}
+          <Card className="hidden bg-card p-0 md:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="label-eyebrow">Name</TableHead>
+                  <TableHead className="label-eyebrow">Position</TableHead>
+                  <TableHead className="label-eyebrow">Schedule</TableHead>
+                  <TableHead className="label-eyebrow text-right">
+                    Monthly salary
+                  </TableHead>
+                  <TableHead className="label-eyebrow">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {employees.map((e) => (
+                  <TableRow
+                    key={e.id}
+                    className={cn(
+                      "border-border transition-colors",
+                      e.status !== "active" && "opacity-60"
+                    )}
+                  >
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/admin/employees/${e.id}`}
+                        className="group inline-flex items-center gap-2.5"
+                      >
+                        <span
+                          aria-hidden
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-border bg-background font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                        >
+                          {initialsOf(e.fullName)}
+                        </span>
+                        <span className="group-hover:underline-brass">
+                          {e.fullName}
+                        </span>
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {e.position}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {e.defaultScheduleTemplate?.name ?? "Unassigned"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums text-foreground">
+                      {DJF.format(e.monthlySalary)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill status={e.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
 
 function StatusPill({ status }: { status: string }) {
+  if (status === "active") {
+    return (
+      <Badge className="border-[var(--success)]/30 bg-[var(--success)]/15 font-mono text-[10px] uppercase tracking-wider text-[var(--success)] hover:bg-[var(--success)]/15">
+        Active
+      </Badge>
+    );
+  }
   return (
-    <span
-      className={
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium " +
-        (status === "active"
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-          : "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300")
-      }
+    <Badge
+      variant="outline"
+      className="border-border bg-muted font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
     >
       {status}
-    </span>
+    </Badge>
+  );
+}
+
+function initialsOf(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .map((s) => s[0]?.toUpperCase() ?? "")
+      .join("")
+      .slice(0, 2) || "??"
   );
 }

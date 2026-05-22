@@ -7,11 +7,17 @@ export const EmployeeCreateSchema = z.object({
   position: z.string().min(1).max(100),
   monthlySalary: z.coerce.number().int().min(0),
   hireDate: z.string().regex(YMD, "Use YYYY-MM-DD"),
-  defaultScheduleId: z.string().min(1),
+  // Required — the day-pattern-aware ScheduleTemplate. Every employee
+  // must be assigned one for the punch flow to know what to expect.
+  defaultScheduleTemplateId: z.string().min(1, "Pick a schedule template"),
   email: z.string().email().toLowerCase().optional(),
 });
 
-export const EmployeeEditSchema = EmployeeCreateSchema.omit({ hireDate: true });
+// hireDate IS editable here. Changes are captured in the audit log via the
+// before/after snapshot in updateEmployeeAction — the spec (§5.2) calls for
+// audit logging on hire-date changes, which the existing employee_updated
+// audit entry already provides.
+export const EmployeeEditSchema = EmployeeCreateSchema;
 
 export const EmployeeSetPinSchema = z.object({
   pin: z.string().regex(/^\d{6}$/, "PIN must be 6 digits"),

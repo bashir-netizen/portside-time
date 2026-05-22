@@ -1,0 +1,276 @@
+{
+  "common": {
+    "appName": "Portside Time",
+    "signOut": "Se déconnecter",
+    "signIn": "Se connecter",
+    "signingIn": "Connexion…",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "submit": "Envoyer",
+    "submitting": "Envoi…",
+    "change": "Changer",
+    "cancel": "Annuler",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "language": "Langue"
+  },
+  "nav": {
+    "today": "Aujourd'hui",
+    "schedule": "Horaire",
+    "leave": "Congés",
+    "justify": "Justifier",
+    "pay": "Paie",
+    "profile": "Profil"
+  },
+  "login": {
+    "tagline": "Connexion · registre de présence",
+    "tabEmployee": "Employé",
+    "tabAdmin": "Admin",
+    "onOffice": "Sur le réseau du bureau",
+    "offEmployeeTitle": "Vous n'êtes pas sur le réseau du bureau",
+    "offEmployeeBody": "Les employés ne peuvent pointer que depuis le Wi-Fi du bureau. Votre adresse IP sera enregistrée et envoyée à votre responsable pour approbation — demandez-lui de l'ajouter avant de réessayer.",
+    "offAdminLabel": "Connexion admin hors bureau",
+    "devBypass": "dev · contrôles du bureau désactivés (DEV_BYPASS_OFFICE_GATES=1)",
+    "tabAriaLabel": "Mode de connexion",
+    "noEmployees": "Aucun employé actif. Demandez à l'admin d'en créer un.",
+    "pin": "Code PIN",
+    "pinPlaceholder": "••••••",
+    "selectEmployee": "Choisissez votre nom dans la liste",
+    "adminEmail": "Email",
+    "adminPassword": "Mot de passe"
+  },
+  "me": {
+    "title": "Aujourd'hui — Portside Time",
+    "greetingMorning": "Bonjour",
+    "greetingAfternoon": "Bon après-midi",
+    "greetingEvening": "Bonsoir",
+    "todayHeader": "Aujourd'hui",
+    "scheduleHeader": "Horaire",
+    "recentHeader": "Récent",
+    "viewWeek": "Voir la semaine",
+    "noShiftToday": "Aucun service prévu aujourd'hui.",
+    "dayOffTitle": "Profitez de votre jour de repos",
+    "dayOffBody": "Aucun pointage attendu aujourd'hui.",
+    "justifyBannerCount": "{count, plural, one {# incident à justifier} other {# incidents à justifier}}",
+    "justifyBannerBody": "Expliquez ce qui s'est passé avant la fin du délai — appuyez pour ouvrir.",
+    "scheduleStart": "Début",
+    "scheduleEnd": "Fin",
+    "scheduleLunchOut": "Pause déj.",
+    "scheduleLunchIn": "Retour",
+    "scheduleLunchOnSite": "Pause sur place",
+    "scheduleLunchOnSiteWithMins": "Pause sur place · {minutes} min",
+    "status": {
+      "dayOff": "Jour de repos",
+      "notStarted": "Pas commencé",
+      "working": "En service",
+      "onLunch": "En pause déj.",
+      "backFromLunch": "En service",
+      "finished": "Terminé"
+    },
+    "dayPattern": {
+      "split_day": "Journée fractionnée",
+      "continuous_day": "Journée continue · pause sur place",
+      "half_day": "Demi-journée",
+      "day_off": "Jour de repos"
+    }
+  },
+  "punchTypes": {
+    "shift_in": "Arrivée",
+    "lunch_out": "Sortie déjeuner",
+    "lunch_in": "Retour déjeuner",
+    "shift_out": "Fin de service"
+  },
+  "punchButton": {
+    "shift_in": "Pointer l'arrivée",
+    "lunch_out": "Pointer la sortie déjeuner",
+    "lunch_in": "Pointer le retour déjeuner",
+    "shift_out": "Pointer la fin de service",
+    "loading": "Chargement…",
+    "noNext": "Service terminé pour aujourd'hui",
+    "pending": "Pointage en cours…",
+    "preparing": "Préparation…",
+    "recording": "Enregistrement…",
+    "recorded": "{label} enregistré",
+    "loadingNext": "Chargement de la prochaine étape…",
+    "fingerprintUnavailable": "Empreinte indisponible — pointage en mode dev-bypass.",
+    "errors": {
+      "no_session": "Veuillez vous reconnecter.",
+      "wrong_role": "Seuls les employés peuvent pointer.",
+      "ip": "Accès refusé.",
+      "device": "Accès refusé.",
+      "fingerprint_mismatch": "Ce navigateur ne correspond pas à l'appareil autorisé.",
+      "sequence": "Ce pointage n'est pas l'étape attendue.",
+      "bad_request": "Requête invalide."
+    }
+  },
+  "ribbon": {
+    "done": "Effectué",
+    "next": "Suivant",
+    "pending": "En attente",
+    "steps": {
+      "shift_in": {
+        "label": "Début du service",
+        "eyebrow": "Arrivée"
+      },
+      "lunch_out": {
+        "label": "Pause déjeuner",
+        "eyebrow": "Début pause"
+      },
+      "lunch_in": {
+        "label": "Retour du déjeuner",
+        "eyebrow": "Fin pause"
+      },
+      "shift_out": {
+        "label": "Fin du service",
+        "eyebrow": "Départ"
+      }
+    }
+  },
+  "schedule": {
+    "title": "Mon horaire",
+    "thisWeek": "Cette semaine",
+    "subtitle": "Semaine du {weekLabel}",
+    "todayBadge": "Aujourd'hui",
+    "templateLabel": "Modèle : {name}",
+    "noTemplate": "Aucun modèle d'horaire assigné. Contactez votre responsable.",
+    "noTemplateAdminHint": "Cet employé n'a pas de modèle d'horaire assigné. Modèle par défaut (journée fractionnée) affiché. L'admin peut en assigner un dans {path}.",
+    "back": "Retour",
+    "busyDayExt": "Jour chargé : fin reportée à {time} · per diem dû"
+  },
+  "leave": {
+    "title": "Congés",
+    "subtitle": "Demandes, soldes, statuts",
+    "balanceAccrued": "Cumulé",
+    "balanceUsed": "Utilisé",
+    "balanceRemaining": "Disponible",
+    "pendingCount": "{count, plural, =0 {Aucune demande en attente} one {# demande en attente} other {# demandes en attente}}",
+    "newRequest": "Nouvelle demande",
+    "formLeaveType": "Type de congé",
+    "formStartDate": "Date de début",
+    "formEndDate": "Date de fin",
+    "formNotes": "Notes (optionnel)",
+    "formSubmit": "Soumettre la demande",
+    "formSubmitting": "Envoi…",
+    "formSuccess": "Demande envoyée. Vous recevrez la décision sous peu.",
+    "historyHeader": "Historique des demandes",
+    "emptyHistory": "Aucune demande pour l'instant.",
+    "leaveTypes": {
+      "annual": "Congé annuel",
+      "sick": "Congé maladie",
+      "maternity": "Congé maternité",
+      "paternity": "Congé paternité",
+      "bereavement": "Décès / deuil",
+      "marriage": "Mariage",
+      "unpaid": "Congé sans solde"
+    },
+    "statuses": {
+      "pending": "En attente",
+      "approved": "Approuvé",
+      "rejected": "Refusé",
+      "cancelled": "Annulé",
+      "pending_certificate": "Certificat en attente",
+      "certified_sick": "Maladie certifiée",
+      "unauthorized": "Absence non autorisée"
+    }
+  },
+  "justify": {
+    "title": "Justifier un incident",
+    "crumb": "Justifier",
+    "intro": "Quand un pointage arrive en retard (ou que vous partez en avance), le système le signale ici. Vous avez {hours}h pour expliquer — passé ce délai, il bascule automatiquement en non-justifié et peut compter dans le seuil disciplinaire.",
+    "allClearTitle": "Rien à justifier — vous êtes en règle.",
+    "allClearBody": "Continuez à pointer à l'heure. Si quelque chose arrive, c'est ici que vous le gérerez.",
+    "sectionOpen": "À justifier",
+    "sectionSubmitted": "Envoyé — en attente de décision",
+    "sectionHistory": "Historique",
+    "form": {
+      "reasonLabel": "Motif — {hours}h restantes",
+      "reasonPlaceholder": "Expliquez ce qui s'est passé. Soyez précis — \"embouteillage\" est trop vague.",
+      "submit": "Soumettre la justification",
+      "submitting": "Envoi…",
+      "successTitle": "Envoyé. L'admin examinera et décidera.",
+      "errors": {
+        "no_session": "Veuillez vous reconnecter.",
+        "missing": "Identifiant d'incident manquant.",
+        "tooShort": "Le motif doit contenir au moins 3 caractères.",
+        "tooLong": "Le motif est trop long (max 2000 caractères).",
+        "notFound": "Incident introuvable.",
+        "notOpen": "Cet incident n'est plus ouvert à la justification."
+      }
+    },
+    "kinds": {
+      "late_arrival": "Arrivée en retard",
+      "early_leave": "Départ anticipé",
+      "missed_punch_out": "Pointage de sortie manqué"
+    },
+    "statuses": {
+      "pending_justification": "En attente de votre motif",
+      "submitted": "Envoyé — en attente de décision",
+      "justified": "Justifié",
+      "manager_unjustified": "Refusé par l'admin",
+      "auto_unjustified": "Auto — délai dépassé"
+    },
+    "minutesLabel": "{minutes} min",
+    "recordedAt": "enregistré à {time}",
+    "adminPrefix": "Admin :"
+  },
+  "pay": {
+    "title": "Paie et congés",
+    "crumb": "Paie et congés",
+    "intro": "Ce que vous avez gagné, ce que vous avez pris. La paie est traitée à l'extérieur — ces chiffres sont à titre d'information seulement, ce n'est ni une sanction ni un avis de droit.",
+    "monthlySalary": "Salaire mensuel",
+    "annualLeaveRemaining": "Congé annuel restant",
+    "tenureYearsMonths": "{years}a {months}m",
+    "tenureMonths": "{months, plural, one {# mois} other {# mois}}",
+    "tenureSuffix": "chez Portside",
+    "secondarySalary": "{position} · {tenure} chez Portside",
+    "secondaryLeave": "Cumulé {accrued} · Utilisé {used}",
+    "daysSuffix": "{count, plural, one {# jour} other {# jours}}",
+    "daysAbbrev": "{count}j",
+    "liveLock": "En direct · verrouillé en fin de mois",
+    "stats": {
+      "daysWorked": "Jours travaillés",
+      "lateIncidents": "Incidents de retard",
+      "perDiem": "Per diem cumulé",
+      "leaveTaken": "Congés pris",
+      "perDiemHint": "En attente du module jours chargés",
+      "leaveTakenHint": "Congé annuel uniquement"
+    },
+    "rules": {
+      "header": "Comment ces chiffres fonctionnent",
+      "salaryTitle": "Salaire",
+      "salaryBody": "Fixé mensuellement, versé à l'extérieur. Les jours non travaillés ne sont pas payés (rémunération calculée sur le temps effectivement travaillé). Ce n'est pas une sanction — simplement aucun paiement pour le temps non pointé.",
+      "leaveTitle": "Congé annuel",
+      "leaveBody": "2,5 jours par mois complet de service (Article 99 du Code du Travail djiboutien). Les congés annuels approuvés sont déduits ; les congés maladie / maternité / familiaux ne le sont pas.",
+      "perDiemTitle": "Per diem",
+      "perDiemBody": "Dû lors des jours chargés quand les employés en journée continue prennent leur déjeuner sur site (travail au-delà de l'heure normale de fin). Le suivi arrivera avec le workflow jour chargé.",
+      "lateTitle": "Incidents de retard",
+      "lateBody": "Enregistrés quand vous pointez après le délai de grâce (15 min par défaut). Le flux de justification vous permet de soumettre un motif sous 48h.",
+      "soon": "Bientôt"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "crumb": "Profil",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "position": "Poste",
+    "joinedOn": "Entré chez Portside",
+    "defaultSchedule": "Horaire par défaut",
+    "scheduleHint": "Modifiable uniquement par l'admin",
+    "unassignedSchedule": "Non assigné",
+    "accountHeader": "Compte",
+    "changePinLabel": "Changer mon code PIN",
+    "changePinHint": "Demandez à l'admin de réinitialiser votre code — l'auto-service arrive dans une mise à jour à venir.",
+    "languageLabel": "Langue",
+    "languageHint": "Choisissez la langue de l'interface. Le changement est immédiat.",
+    "notificationsLabel": "Notifications",
+    "notificationsHint": "Les préférences de notifications arrivent dans une prochaine version.",
+    "edit": "Modifier",
+    "soon": "Bientôt",
+    "footerLabel": "portside time · fiche personnel",
+    "footerHint": "vos données restent sur le serveur du bureau · demandez à l'admin pour révision"
+  },
+  "offOffice": {
+    "banner": "Vous êtes hors du réseau du bureau"
+  }
+}

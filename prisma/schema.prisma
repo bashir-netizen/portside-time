@@ -18,23 +18,29 @@ datasource db {
 // ---------- Domain ----------
 
 model Employee {
-  id                       String    @id @default(cuid())
-  fullName                 String    @map("full_name")
-  position                 String
-  monthlySalary            Int       @map("monthly_salary") // DJF, no decimals
-  hireDate                 DateTime  @map("hire_date")
-  status                   String    @default("active") // active | inactive
-  defaultScheduleId        String    @map("default_schedule_id")
-  defaultSchedule          Schedule  @relation(fields: [defaultScheduleId], references: [id])
-  annualLeaveBalanceDays   Int       @default(0) @map("annual_leave_balance_days")
-  pinHash                  String?   @map("pin_hash") // Argon2id; nullable so admin can create employee then set PIN
-  createdAt                DateTime  @default(now()) @map("created_at")
-  updatedAt                DateTime  @updatedAt @map("updated_at")
+  id                          String    @id @default(cuid())
+  fullName                    String    @map("full_name")
+  position                    String
+  monthlySalary               Int       @map("monthly_salary") // DJF, no decimals
+  hireDate                    DateTime  @map("hire_date")
+  status                      String    @default("active") // active | inactive
+
+  // Day-pattern template — the source of truth for an employee's expected
+  // punch sequence. Required; every employee must be assigned a template at
+  // creation time.
+  defaultScheduleTemplateId   String           @map("default_schedule_template_id")
+  defaultScheduleTemplate     ScheduleTemplate @relation(fields: [defaultScheduleTemplateId], references: [id])
+
+  annualLeaveBalanceDays      Int       @default(0) @map("annual_leave_balance_days")
+  pinHash                     String?   @map("pin_hash") // Argon2id; nullable so admin can create employee then set PIN
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
 
   sessions       Session[]
   punches        Punch[]
   leaveRequests  LeaveRequest[]
   monthlyReports MonthlyReport[]
+  lateIncidents  LateIncident[]
 
   @@map("employees")
 }
@@ -53,7 +59,8 @@ model Punch {
   isCorrected Boolean  @default(false) @map("is_corrected")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  corrections PunchCorrection[]
+  corrections   PunchCorrection[]
+  lateIncidents LateIncident[]
 
   @@index([employeeId, punchedAt])
   @@index([punchedAt])
@@ -167,20 +174,126 @@ model Adjustment {
   @@map("adjustments")
 }
 
-model Schedule {
-  id          String   @id @default(cuid())
-  label       String
-  shiftStart  String   @map("shift_start")   // "HH:mm"
-  lunchStart  String   @map("lunch_start")
-  lunchEnd    String   @map("lunch_end")
-  shiftEnd    String   @map("shift_end")
-  workDays    String   @map("work_days")     // JSON array of "Sat"..."Thu"
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+// ---------- Schedule templates (day-by-day patterns) ----------
+//
+// Spec §5.3. Two production patterns at launch:
+//   - Fathi: split-day (lunch off-site) Sun..Thu, day off Fri, half day Sat
+//   - Hawa:  continuous-day (lunch on-site) Sun..Wed with busy-day extension
+//            to 18h30, half day Thu, day off Fri, split day Sat
+//
+// Coexists with the legacy Schedule model for now. Employee assignment +
+// punch-flow branching ship in the next PR.
 
-  employees Employee[]
+model ScheduleTemplate {
+  id                  String        @id @default(cuid())
+  name                String        @unique
+  description         String?
+  hasBusyDayExtension Boolean       @default(false) @map("has_busy_day_extension")
+  busyDayEndTime      String?       @map("busy_day_end_time") // "HH:mm"
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
 
-  @@map("schedules")
+  dayPatterns DayPattern[]
+  employees   Employee[]
+
+  @@map("schedule_templates")
+}
+
+model DayPattern {
+  id                  String           @id @default(cuid())
+  scheduleTemplateId  String           @map("schedule_template_id")
+  scheduleTemplate    ScheduleTemplate @relation(fields: [scheduleTemplateId], references: [id], onDelete: Cascade)
+  dayOfWeek           Int              @map("day_of_week")        // 0=Sun .. 6=Sat
+  type                String           // split_day | continuous_day | half_day | day_off
+  startTime           String?          @map("start_time")         // "HH:mm"
+  endTime             String?          @map("end_time")
+  lunchOutTime        String?          @map("lunch_out_time")     // for split_day
+  lunchInTime         String?          @map("lunch_in_time")      // for split_day
+  lunchBreakMinutes   Int?             @map("lunch_break_minutes") // for continuous_day
+  lunchOnSite         Boolean          @default(false) @map("lunch_on_site")
+
+  @@unique([scheduleTemplateId, dayOfWeek])
+  @@map("day_patterns")
+}
+
+// ---------- Company configuration ----------
+//
+// Singleton — only one row, id="default". Read everywhere a default value
+// would otherwise be hard-coded (grace period, justification window, leave
+// accrual rate, per-diem amount). Per spec §4.
+model CompanyConfig {
+  id                            String   @id @default("default")
+  gracePeriodMinutes            Int      @default(15)  @map("grace_period_minutes")
+  justificationWindowHours      Int      @default(48)  @map("justification_window_hours")
+  annualLeaveAccrualPerMonth    Float    @default(2.5) @map("annual_leave_accrual_per_month")
+  perDiemDefaultDjf             Int?     @map("per_diem_default_djf")
+  weekStartDay                  Int      @default(0)   @map("week_start_day")     // 0=Sun
+  dayOffDefault                 Int      @default(5)   @map("day_off_default")    // 5=Fri
+  timezone                      String   @default("Africa/Djibouti")
+  updatedAt                     DateTime @updatedAt    @map("updated_at")
+  updatedBy                     String?  @map("updated_by")
+
+  @@map("company_config")
+}
+
+// ---------- Late incidents (spec §5.5 + §5.6) ----------
+//
+// Created automatically the moment a late shift_in / early shift_out punch
+// lands (see src/lib/punch/late-incident.ts). Employee has
+// CompanyConfig.justificationWindowHours to submit a reason via /me/justify;
+// if they don't, a periodic job flips it to `auto_unjustified`. Admin can
+// then accept or reject from /admin/late.
+//
+// Counts toward Article 59 al. 9: 3+ unjustified incidents in any rolling
+// 30-day window flags the employee.
+
+model LateIncident {
+  id            String    @id @default(cuid())
+
+  employeeId    String    @map("employee_id")
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  // Punch that triggered this incident. SetNull because corrections may
+  // void the underlying punch, but we still want to preserve the incident
+  // history for audit purposes.
+  punchId       String?   @map("punch_id")
+  punch         Punch?    @relation(fields: [punchId], references: [id], onDelete: SetNull)
+
+  // Calendar day in Djibouti (00:00 of that day in UTC).
+  incidentDate  DateTime  @map("incident_date")
+
+  // late_arrival | early_leave | missed_punch_out
+  kind          String
+
+  // Magnitude of the incident in whole minutes. For late_arrival: how many
+  // minutes past (startTime + graceMin) the shift_in landed. For early_leave:
+  // how many minutes before endTime the shift_out landed.
+  minutes       Int
+
+  // Lifecycle:
+  //   pending_justification — created, waiting for employee to submit reason
+  //   submitted             — employee submitted reason, admin needs to decide
+  //   justified             — admin accepted; does NOT count toward 3-in-30
+  //   manager_unjustified   — admin rejected reason; counts toward 3-in-30
+  //   auto_unjustified      — window elapsed without submission; counts
+  status        String    @default("pending_justification")
+
+  reason        String?
+  submittedAt   DateTime? @map("submitted_at")
+
+  decidedAt     DateTime? @map("decided_at")
+  decidedBy     String?   @map("decided_by") // admin User.id
+  decisionNotes String?   @map("decision_notes")
+
+  autoFlippedAt DateTime? @map("auto_flipped_at")
+
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([employeeId, incidentDate])
+  @@index([status])
+  @@index([incidentDate])
+  @@map("late_incidents")
 }
 
 // ---------- Auth ----------
